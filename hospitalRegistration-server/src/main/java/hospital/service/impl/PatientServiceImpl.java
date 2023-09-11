@@ -1,0 +1,100 @@
+package hospital.service.impl;
+
+import hospital.constant.MessageConstant;
+import hospital.dto.LoginDTO;
+import hospital.dto.PatientRegisterDTO;
+import hospital.entity.Patient;
+import hospital.temp.PatientInfo;
+import hospital.exception.PasswordErrorException;
+import hospital.exception.RegisterFailedException;
+import hospital.mapper.PatientMapper;
+import hospital.service.PatientService;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.util.DigestUtils;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
+import java.util.Map;
+
+import static hospital.controller.doctor.DoctorController.verCode;
+
+@Service
+public class PatientServiceImpl implements PatientService {
+
+    @Autowired
+    private PatientMapper patientMapper;
+
+    /**
+     * 患者登录
+     */
+    public Patient login(LoginDTO loginDTO) {
+        String username = loginDTO.getUsername();
+        String password = loginDTO.getPassword();
+
+        //根据用户名查询数据库中的数据
+        Patient patient = patientMapper.selectByUsername(username);
+
+        //密码比对
+        //对前端传过来的明文密码进行加密处理
+        password = DigestUtils.md5DigestAsHex(password.getBytes());
+        if (patient != null) {
+            if (!password.equals(patient.getPassword())) {
+                //密码错误
+                throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
+            }
+        }
+
+        //返回实体对象
+        return patient;
+    }
+
+    /**
+     * 患者注册
+     */
+    public void insertNewPatient(PatientRegisterDTO patientRegisterDTO, HttpServletRequest httpServletRequest) {
+        HttpSession session = httpServletRequest.getSession();
+        Map<String, String> codeMap = (Map<String, String>) session.getAttribute("verCode");
+        String code;
+        try {
+            code = codeMap.get("code");
+        } catch (Exception e) {
+            //验证码过期，或未找到  ---验证码无效
+            throw new RegisterFailedException(MessageConstant.REGISTER_TIMEOUT);
+        }
+        //验证码判断
+        if (!verCode.toUpperCase().equals(code)) {
+            throw new RegisterFailedException(MessageConstant.REGISTER_FAILED);
+        }
+        //验证码使用完后session删除
+        session.removeAttribute("verCode");
+        Patient patient = patientMapper.selectByUsername(patientRegisterDTO.getUserName());
+        //用户名是否可用
+        if (patient != null) {
+            //返回，该用户）（username）已被注册过
+            throw new RegisterFailedException(MessageConstant.ACCOUNT_ALREADY_EXISTS);
+        }
+        //数据库插入数据
+        Patient patientTemp = new Patient();
+        BeanUtils.copyProperties(patientRegisterDTO, patientTemp);
+        patientTemp.setPassword(DigestUtils.md5DigestAsHex(patientTemp.getPassword().getBytes()));
+        patientMapper.insertPatient(patientTemp);
+        //是否插入数据成功
+        if (patientMapper.selectByUsername(patientTemp.getUserName()) == null) {
+            //返回注册失败
+            throw new RegisterFailedException(MessageConstant.REGISTER_FAILED_BUSY);
+        }
+        //注册成功
+    }
+
+    /**
+     * 查看患者信息
+     */
+    public PatientInfo queryInfo(Long patientId) {
+        Patient patient = patientMapper.selectById(patientId);
+        PatientInfo patientInfo = new PatientInfo();
+        BeanUtils.copyProperties(patient, patientInfo);
+        return patientInfo;
+    }
+}

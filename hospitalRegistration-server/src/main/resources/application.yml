@@ -1,0 +1,66 @@
+server:
+  port: 8080
+spring:
+  #解决循环依赖问题
+  main:
+    allow-circular-references: true
+  mvc:
+    path match:
+      matching-strategy: ANT_PATH_MATCHER
+
+  datasource:
+    # 配置数据源
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 使用druid连接池
+    type: com.alibaba.druid.pool.DruidDataSource
+    url: jdbc:mysql://localhost:3306/hospital_registration?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=CONVERT_TO_NULL&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: Qlzoam123456
+
+  #邮件发送
+  mail:
+    username: 2892739899@qq.com
+    #邮箱授权码
+    password: cuublarqqygsdecd
+    host: smtp.qq.com
+    default-encoding: utf-8
+    #开启加密验证
+    properties:
+      mail:
+        smtp:
+          ssl:
+            enable: ture
+
+
+hospital:
+  jwt:
+    # 设置jwt签名加密时使用的秘钥
+    doctor-secret-key: hospital_doctor
+    # 设置jwt过期时间
+    doctor-ttl: 7200000
+    # 设置前端传递过来的令牌名称
+    doctor-token-name: token
+    #设置jwt签名加密时使用的密钥
+    patient-secret-key: hospital_patient
+    #设置jwt过期时间
+    patient-ttl: 7200000
+    #设置前端传来的令牌命令
+    patient-token-name: token
+
+
+mybatis:
+  #mapper配置文件
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: hospital.entity
+  configuration:
+    #开启驼峰命名
+    map-underscore-to-camel-case: true
+
+logging:
+  level:
+    hospital:
+        mapper: debug
+        service: info
+        controller: info
+
+
