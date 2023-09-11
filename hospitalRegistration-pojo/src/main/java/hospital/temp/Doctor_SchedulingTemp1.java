@@ -9,7 +9,7 @@ import java.util.Date;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class Doctor_Scheduling_Temp {
+public class Doctor_SchedulingTemp1 {
 
     //医生id
     private Long doctorId;

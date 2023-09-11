@@ -4,7 +4,8 @@ import hospital.dto.ScheduleTemplateDTO;
 import hospital.entity.Doctor_Scheduling;
 import hospital.entity.Patient_Doctor_Scheduling;
 import hospital.entity.ScheduleTemplate;
-import hospital.temp.Doctor_Scheduling_Temp;
+import hospital.temp.Doctor_SchedulingTemp2;
+import hospital.temp.Doctor_SchedulingTemp1;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -19,7 +20,7 @@ public interface ScheduleMapper {
 
     List<Doctor_Scheduling> selectDoctorScheduleByRegistrationTypeId(Long registrationTypeId);
 
-    void insertTemplate(@Param("template") ScheduleTemplateDTO template, @Param("registrationTypeId") Long registrationTypeId);
+    void insertTemplate(@Param("template") ScheduleTemplateDTO template, @Param("registrationTypeIds") String registrationTypeIds);
 
     List<ScheduleTemplate> selectByDoctorId(Long doctorId);
 
@@ -31,7 +32,7 @@ public interface ScheduleMapper {
 
     void insertNewDoctorSchedule(@Param("doctorId") Long doctorId,@Param("date") Date date);
 
-    List<Doctor_Scheduling_Temp> selectDoctorSchedulingTempByRegistrationTypeId(@Param("doctorId") Long doctorId, @Param("registrationTypeId") Long id);
+    List<Doctor_SchedulingTemp1> selectDoctorSchedulingTempByRegistrationTypeId(@Param("doctorId") Long doctorId, @Param("registrationTypeId") Long id);
 
-    List<Doctor_Scheduling> selectDoctorScheduleByDoctorId(Long doctorId);
+    List<Doctor_SchedulingTemp2> selectDoctorScheduleByDoctorId(Long doctorId);
 }

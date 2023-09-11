@@ -12,19 +12,22 @@ import hospital.exception.RegisterFailedException;
 import hospital.mapper.DoctorMapper;
 import hospital.mapper.RegistrationMapper;
 import hospital.mapper.ScheduleMapper;
+import hospital.result.Result;
 import hospital.service.DoctorService;
 import hospital.temp.DoctorInfo;
-import hospital.temp.Doctor_Scheduling_Temp;
+import hospital.temp.Doctor_SchedulingTemp2;
+import hospital.temp.Doctor_SchedulingTemp1;
 import hospital.utils.DataUtils;
 import hospital.vo.Doctor_SchedulingVO;
 import hospital.vo.ScheduleTemplateVO;
+import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.DigestUtils;
+import org.springframework.web.bind.annotation.PostMapping;
 
-import javax.print.Doc;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import java.util.LinkedList;
@@ -151,9 +154,9 @@ public class DoctorServiceImpl implements DoctorService {
             //判断是否有模板正在使用该挂号类别或医生的排班
             List<ScheduleTemplate> scheduleTemplates = scheduleMapper.selectByRegistrationTypeId(id);
             List<Patient_Doctor_Scheduling> patientDoctorScheduling = scheduleMapper.selectPatientScheduleByRegistrationTypeId(id);
-            List<Doctor_Scheduling_Temp> doctorSchedulingTemps = scheduleMapper.selectDoctorSchedulingTempByRegistrationTypeId(BaseContext.getCurrentId(), id);
-            for (Doctor_Scheduling_Temp temp : doctorSchedulingTemps) {
-                if (temp.getOneRegistrationTypeNumber() == 1){
+            List<Doctor_SchedulingTemp1> doctorSchedulingTemps = scheduleMapper.selectDoctorSchedulingTempByRegistrationTypeId(BaseContext.getCurrentId(), id);
+            for (Doctor_SchedulingTemp1 temp : doctorSchedulingTemps) {
+                if (temp.getOneRegistrationTypeNumber() == 1) {
                     throw new DeletionNotAllowedException(MessageConstant.DELETE_FAILED_DOCTOR_SCHEDULE);
                 }
             }
@@ -173,9 +176,13 @@ public class DoctorServiceImpl implements DoctorService {
     @Transactional
     public void addTemplate(ScheduleTemplateDTO scheduleTemplateDTO) {
         scheduleTemplateDTO.setDoctorId(BaseContext.getCurrentId());
+        StringBuilder registrationTypes_Ids = new StringBuilder();
         for (Long registrationTypeId : scheduleTemplateDTO.getRegistrationTypes_Ids()) {
-            scheduleMapper.insertTemplate(scheduleTemplateDTO, registrationTypeId);
+            registrationTypes_Ids.append(registrationTypeId);
+            registrationTypes_Ids.append(",");
         }
+        registrationTypes_Ids.deleteCharAt(registrationTypes_Ids.length() - 1);
+        scheduleMapper.insertTemplate(scheduleTemplateDTO, String.valueOf(registrationTypes_Ids));
     }
 
 
@@ -186,16 +193,20 @@ public class DoctorServiceImpl implements DoctorService {
         List<ScheduleTemplateVO> scheduleTemplateVOS = new LinkedList<>();
         List<ScheduleTemplate> scheduleTemplates = scheduleMapper.selectByDoctorId(doctorId);
         for (ScheduleTemplate scheduleTemplate : scheduleTemplates) {
-            List<RegistrationType> registrationTypes = registrationMapper.selectById(scheduleTemplate.getRegistrationTypeId());
-            ScheduleTemplateVO scheduleTemplateVO = ScheduleTemplateVO.builder()
-                    .templateName(scheduleTemplate.getTemplateName())
-                    .registrationTypes(registrationTypes)
-                    .doctorId(BaseContext.getCurrentId())
-                    .afternoonCheckNumber(scheduleTemplate.getAfternoonCheckNumber())
-                    .morningCheckNumber(scheduleTemplate.getMorningCheckNumber())
-                    .id(scheduleTemplate.getId())
-                    .build();
-            scheduleTemplateVOS.add(scheduleTemplateVO);
+            String[] RegistrationTypeIds = scheduleTemplate.getRegistrationTypeId().split(",");
+            for (String registrationTypeId : RegistrationTypeIds) {
+                List<RegistrationType> registrationTypes = registrationMapper.selectById(Long.valueOf(registrationTypeId));
+                ScheduleTemplateVO scheduleTemplateVO = ScheduleTemplateVO.builder()
+                        .templateName(scheduleTemplate.getTemplateName())
+                        .registrationTypes(registrationTypes)
+                        .doctorId(BaseContext.getCurrentId())
+                        .afternoonCheckNumber(scheduleTemplate.getAfternoonCheckNumber())
+                        .morningCheckNumber(scheduleTemplate.getMorningCheckNumber())
+                        .id(scheduleTemplate.getId())
+                        .build();
+                scheduleTemplateVOS.add(scheduleTemplateVO);
+            }
+
         }
         return scheduleTemplateVOS;
     }
@@ -220,9 +231,13 @@ public class DoctorServiceImpl implements DoctorService {
         scheduleMapper.deleteByTemplateId(scheduleTemplateDTO.getId());
         //再把新的给加上去
         scheduleTemplateDTO.setDoctorId(BaseContext.getCurrentId());
+        StringBuilder registrationTypeIds = new StringBuilder();
         for (Long registrationTypeId : scheduleTemplateDTO.getRegistrationTypes_Ids()) {
-            scheduleMapper.insertTemplate(scheduleTemplateDTO, registrationTypeId);
+            registrationTypeIds.append(registrationTypeId);
+            registrationTypeIds.append(",");
         }
+        registrationTypeIds.deleteCharAt(registrationTypeIds.length() - 1);
+        scheduleMapper.insertTemplate(scheduleTemplateDTO, String.valueOf(registrationTypeIds));
     }
 
     /**
@@ -242,12 +257,28 @@ public class DoctorServiceImpl implements DoctorService {
         doctorMapper.updateInfo(BaseContext.getCurrentId(), doctorInfo);
     }
 
-//    /**
-//     * 查询排班信息
-//     */
-//    public List<Doctor_SchedulingVO> querySchedule(Long doctorId) {
-//        List<Doctor_Scheduling> doctorSchedulingList = scheduleMapper.selectDoctorScheduleByDoctorId(doctorId);
-//    }
-//
+    /**
+     * 查询排班信息
+     */
+    @Transactional
+    public List<Doctor_SchedulingVO> querySchedule(Long doctorId) {
+        List<Doctor_SchedulingTemp2> doctorSchedulingList = scheduleMapper.selectDoctorScheduleByDoctorId(doctorId);
+        List<Doctor_SchedulingVO> doctorSchedulingVOS = new LinkedList<>();
+        for (Doctor_SchedulingTemp2 doctorScheduling : doctorSchedulingList) {
+            Doctor_SchedulingVO doctorSchedulingVO = new Doctor_SchedulingVO();
+            BeanUtils.copyProperties(doctorScheduling, doctorSchedulingVO);
+            //再来处理registrationType连表
+            String[] registrationTypeIds = doctorScheduling.getRegistrationTypeIds().split(",");
+            List<RegistrationType> registrationTypes = new LinkedList<>();
+            for (String registrationTypeId : registrationTypeIds) {
+                registrationTypes.addAll(registrationMapper.selectById(Long.valueOf(registrationTypeId)));
+            }
+            doctorSchedulingVO.setRegistrationTypes(registrationTypes);
+            doctorSchedulingVOS.add(doctorSchedulingVO);
+        }
+
+        return doctorSchedulingVOS;
+    }
+
 
 }

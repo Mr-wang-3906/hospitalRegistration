@@ -38,5 +38,5 @@ public interface DoctorService {
 
     void updateInfo(DoctorInfo doctorInfo);
 
-//    List<Doctor_SchedulingVO> querySchedule(Long doctorId);
+    List<Doctor_SchedulingVO> querySchedule(Long doctorId);
 }

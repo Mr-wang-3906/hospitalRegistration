@@ -13,14 +13,11 @@ import java.util.List;
 @NoArgsConstructor
 public class Doctor_SchedulingVO {
 
-    //id
-    private Long id;
-
     //医生id
     private Long doctorId;
 
-    //日期
-    private Date data;
+    //日期(转换为string形式)
+    private String data;
 
     //上午问诊患者人数
     private int morningCheckNumber;
@@ -28,6 +25,6 @@ public class Doctor_SchedulingVO {
     //下午问诊患者人数
     private int afternoonCheckNumber;
 
-    //挂号种类id
-    private String registrationTypeIds;
+    //挂号种类
+    private List<RegistrationType> registrationTypes;
 }

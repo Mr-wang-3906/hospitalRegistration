@@ -3,12 +3,10 @@ package hospital.controller.doctor;
 import hospital.context.BaseContext;
 import hospital.dto.DoctorRegisterDTO;
 import hospital.dto.ScheduleTemplateDTO;
-import hospital.entity.Doctor_Scheduling;
 import hospital.entity.RegistrationType;
 import hospital.result.Result;
 import hospital.service.DoctorService;
 import hospital.temp.DoctorInfo;
-import hospital.temp.Doctor_Scheduling_Temp;
 import hospital.vo.Doctor_SchedulingVO;
 import hospital.vo.ScheduleTemplateVO;
 import io.swagger.annotations.Api;
@@ -141,12 +139,24 @@ public class DoctorController {
         return Result.success();
     }
 
-//    /**
-//     * 排班信息查询
-//     */
-//    @GetMapping("/schedule/query")
-//    public Result<List<Doctor_SchedulingVO>> doctorQuerySchedule(){
-//        List<Doctor_SchedulingVO> doctorSchedules = doctorService.querySchedule(BaseContext.getCurrentId());
-//
-//    }
+    /**
+     * 排班信息查询
+     */
+    @GetMapping("/schedule/query")
+    @ApiOperation("排班信息查询")
+    public Result<List<Doctor_SchedulingVO>> doctorQuerySchedule(){
+        List<Doctor_SchedulingVO> doctorSchedules = doctorService.querySchedule(BaseContext.getCurrentId());
+        return Result.success(doctorSchedules);
+    }
+
+    /**
+     * 模板安排某天排班
+     */
+    @PostMapping("/schedule/template")
+    @ApiOperation(value = "模板安排某天排班")
+    public Result doctorSetScheduleWithTemplate(){
+        //TODO
+        //目前强行把排班模板设置为一个模板只占用一条mysql数据,用id定位模板,之后需再加入 模板安排某天排班的操作
+        return null;
+    }
 }

@@ -1,29 +1,28 @@
-package hospital.entity;
+package hospital.temp;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class ScheduleTemplate {
+import java.util.Date;
 
-    //id
-    private Long id;
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class Doctor_SchedulingTemp2 {
 
     //医生id
     private Long doctorId;
 
-    //模板名称
-    private String templateName;
+    //日期(string形式)
+    private String data;
 
-    //上午挂号数量
+    //上午问诊患者人数
     private int morningCheckNumber;
 
-    //下午挂号数量
+    //下午问诊患者人数
     private int afternoonCheckNumber;
 
     //挂号种类id
-    private String registrationTypeId;
+    private String registrationTypeIds;
 }
