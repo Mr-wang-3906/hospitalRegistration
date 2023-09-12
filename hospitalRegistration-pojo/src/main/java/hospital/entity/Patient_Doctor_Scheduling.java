@@ -17,8 +17,11 @@ public class Patient_Doctor_Scheduling {
     //医生id
     private Long doctorId;
 
-    //挂号总数
-    private int registrationNumber;
+    //挂号总数-上午
+    private int registrationNumber_morning;
+
+    //挂号总数-下午
+    private int registrationNumber_afternoon;
 
     //日期
     private Date date;

@@ -4,8 +4,6 @@ import hospital.dto.ScheduleTemplateDTO;
 import hospital.entity.Doctor_Scheduling;
 import hospital.entity.Patient_Doctor_Scheduling;
 import hospital.entity.ScheduleTemplate;
-import hospital.temp.Doctor_SchedulingTemp2;
-import hospital.temp.Doctor_SchedulingTemp1;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -24,15 +22,33 @@ public interface ScheduleMapper {
 
     List<ScheduleTemplate> selectByDoctorId(Long doctorId);
 
-    List<ScheduleTemplate> selectById(Long id);
+    ScheduleTemplate selectById(Long id);
 
     void deleteByTemplateId(Long id);
 
-    void deleteByRegistrationTypeId(Long registrationTypeId);
+    void updateByRegistrationTypeId(Long registrationTypeId);
 
     void insertNewDoctorSchedule(@Param("doctorId") Long doctorId,@Param("date") Date date);
 
-    List<Doctor_SchedulingTemp1> selectDoctorSchedulingTempByRegistrationTypeId(@Param("doctorId") Long doctorId, @Param("registrationTypeId") Long id);
+    List<Doctor_Scheduling> selectDoctorSchedulingTempByRegistrationTypeId(@Param("doctorId") Long doctorId, @Param("registrationTypeId") Long id);
 
-    List<Doctor_SchedulingTemp2> selectDoctorScheduleByDoctorId(Long doctorId);
+    List<Doctor_Scheduling> selectDoctorScheduleByDoctorId(Long doctorId);
+
+    void updateTemplate(@Param("template") ScheduleTemplateDTO template, @Param("registrationTypeIds") String registrationTypeIds);
+
+    void updateByDoctorIdAndDate(@Param("doctorId") Long doctorId, @Param("date") java.sql.Date date, @Param("ds") Doctor_Scheduling doctorScheduling);
+
+    Doctor_Scheduling selectByDoctorIdAndDate(@Param("doctorId") Long doctorId, @Param("Date") String sourceDate);
+
+    void copyOneDay(@Param("targetDate") String targetDate, @Param("schedule") Doctor_Scheduling doctorScheduling, @Param("doctorId") Long doctorId);
+
+    List<Patient_Doctor_Scheduling> selectPatientDoctorScheduling(java.sql.Date date);
+
+    void updatePatientDoctorSchedulingDate();
+
+    void updatePatientDoctorScheduling(@Param("doctorId") Long doctorId, @Param("date") Date date, @Param("registrationTypeIds") String registrationTypeIds);
+
+    void deleteDoctorSchedulingMonth(int lastMonth);
+
+    void insertNextMonthSchedules(@Param("doctorId") Long doctorId, @Param("nextDate") String nextDate);
 }

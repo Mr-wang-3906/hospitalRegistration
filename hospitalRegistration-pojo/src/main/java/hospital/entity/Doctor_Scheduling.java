@@ -27,5 +27,5 @@ public class Doctor_Scheduling {
     private int afternoonCheckNumber;
 
     //挂号种类id
-    private Long registrationTypeId;
+    private String registrationTypeIds;
 }

@@ -25,5 +25,5 @@ public class ScheduleTemplate {
     private int afternoonCheckNumber;
 
     //挂号种类id
-    private String registrationTypeId;
+    private String registrationTypeIds;
 }

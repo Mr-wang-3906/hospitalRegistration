@@ -4,6 +4,7 @@ import hospital.constant.JwtClaimsConstant;
 import hospital.constant.MessageConstant;
 import hospital.context.BaseContext;
 import hospital.exception.LoginFailedException;
+import hospital.exception.UserNotLoginException;
 import hospital.properties.JwtProperties;
 import hospital.utils.JwtUtil;
 import hospital.constant.JwtClaimsConstant;
@@ -58,7 +59,7 @@ public class JwtTokenPatientInterceptor implements HandlerInterceptor {
         } catch (Exception ex) {
             //4、不通过，响应401 状态码
             response.setStatus(401);
-            throw new LoginFailedException(MessageConstant.USER_NOT_LOGIN);
+            throw new UserNotLoginException(MessageConstant.USER_NOT_LOGIN);
         }
     }
 }

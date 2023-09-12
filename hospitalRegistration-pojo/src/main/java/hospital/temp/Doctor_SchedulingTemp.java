@@ -4,12 +4,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Date;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class Doctor_SchedulingTemp2 {
+public class Doctor_SchedulingTemp {
 
     //医生id
     private Long doctorId;
@@ -24,5 +24,5 @@ public class Doctor_SchedulingTemp2 {
     private int afternoonCheckNumber;
 
     //挂号种类id
-    private String registrationTypeIds;
+    private List<Long> registrationType_Ids;
 }

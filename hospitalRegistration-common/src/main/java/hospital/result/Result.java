@@ -11,8 +11,8 @@ import java.io.Serializable;
 @Data
 public class Result<T> implements Serializable {
 
-    private Integer code; //编码：200成功，500和其它数字为失败
-    private String msg; //错误信息
+    private Integer code; //编码：200成功，500失败
+    private String msg = "操作成功"; //若有错则改为错误信息
     private T data; //数据
 
     public static <T> Result<T> success() {
@@ -32,6 +32,13 @@ public class Result<T> implements Serializable {
         Result result = new Result();
         result.msg = msg;
         result.code = 500;
+        return result;
+    }
+
+    public static <T> Result<T> userNotLogin(String msg) {
+        Result result = new Result();
+        result.msg = msg;
+        result.code = 401;
         return result;
     }
 

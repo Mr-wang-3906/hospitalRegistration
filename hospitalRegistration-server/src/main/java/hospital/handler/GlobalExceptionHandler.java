@@ -2,6 +2,7 @@ package hospital.handler;
 
 import hospital.constant.MessageConstant;
 import hospital.exception.BaseException;
+import hospital.exception.UserNotLoginException;
 import hospital.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -25,6 +26,17 @@ public class GlobalExceptionHandler {
     public Result exceptionHandler(BaseException ex){
         log.error("异常信息：{}", ex.getMessage());
         return Result.error(ex.getMessage());
+    }
+
+    /**
+     * 捕获未登录状态
+     * @param ex
+     * @return
+     */
+    @ExceptionHandler
+    public Result exceptionHandler(UserNotLoginException ex){
+        log.error("异常信息：{}", ex.getMessage());
+        return Result.userNotLogin(ex.getMessage());
     }
 
     /**

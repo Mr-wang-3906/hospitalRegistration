@@ -2,37 +2,31 @@ package hospital.service.impl;
 
 import hospital.constant.MessageConstant;
 import hospital.context.BaseContext;
-import hospital.dto.LoginDTO;
-import hospital.dto.DoctorRegisterDTO;
-import hospital.dto.ScheduleTemplateDTO;
+import hospital.dto.*;
 import hospital.entity.*;
 import hospital.exception.DeletionNotAllowedException;
 import hospital.exception.PasswordErrorException;
 import hospital.exception.RegisterFailedException;
+import hospital.exception.UpdateFailedException;
 import hospital.mapper.DoctorMapper;
 import hospital.mapper.RegistrationMapper;
 import hospital.mapper.ScheduleMapper;
-import hospital.result.Result;
 import hospital.service.DoctorService;
 import hospital.temp.DoctorInfo;
-import hospital.temp.Doctor_SchedulingTemp2;
-import hospital.temp.Doctor_SchedulingTemp1;
+import hospital.temp.Doctor_SchedulingTemp;
 import hospital.utils.DataUtils;
 import hospital.vo.Doctor_SchedulingVO;
 import hospital.vo.ScheduleTemplateVO;
-import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.DigestUtils;
-import org.springframework.web.bind.annotation.PostMapping;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDate;
+import java.util.*;
 
 import static hospital.controller.doctor.DoctorController.verCode;
 
@@ -149,23 +143,22 @@ public class DoctorServiceImpl implements DoctorService {
     /**
      * 删除挂号种类
      */
+    @Transactional
     public void deleteRegistrationType(List<Long> ids) {
         for (Long id : ids) {
             //判断是否有模板正在使用该挂号类别或医生的排班
             List<ScheduleTemplate> scheduleTemplates = scheduleMapper.selectByRegistrationTypeId(id);
             List<Patient_Doctor_Scheduling> patientDoctorScheduling = scheduleMapper.selectPatientScheduleByRegistrationTypeId(id);
-            List<Doctor_SchedulingTemp1> doctorSchedulingTemps = scheduleMapper.selectDoctorSchedulingTempByRegistrationTypeId(BaseContext.getCurrentId(), id);
-            for (Doctor_SchedulingTemp1 temp : doctorSchedulingTemps) {
-                if (temp.getOneRegistrationTypeNumber() == 1) {
-                    throw new DeletionNotAllowedException(MessageConstant.DELETE_FAILED_DOCTOR_SCHEDULE);
-                }
+            List<Doctor_Scheduling> doctorSchedulingTemps = scheduleMapper.selectDoctorSchedulingTempByRegistrationTypeId(BaseContext.getCurrentId(), id);
+            if (doctorSchedulingTemps.size() > 0) {
+                throw new DeletionNotAllowedException(MessageConstant.DELETE_FAILED_DOCTOR_SCHEDULE);
             }
-            if (scheduleTemplates.size() == 1) {
+            if (scheduleTemplates.size() > 0) {
                 throw new DeletionNotAllowedException(MessageConstant.DELETE_FAILED_TEMPLATE);
             } else if (patientDoctorScheduling.size() > 0) {
                 throw new DeletionNotAllowedException(MessageConstant.DELETE_FAILED_DOCTOR);
             }
-            scheduleMapper.deleteByRegistrationTypeId(id);
+            scheduleMapper.updateByRegistrationTypeId(id);
             registrationMapper.deleteRegistrationType(id);
         }
     }
@@ -193,19 +186,21 @@ public class DoctorServiceImpl implements DoctorService {
         List<ScheduleTemplateVO> scheduleTemplateVOS = new LinkedList<>();
         List<ScheduleTemplate> scheduleTemplates = scheduleMapper.selectByDoctorId(doctorId);
         for (ScheduleTemplate scheduleTemplate : scheduleTemplates) {
-            String[] RegistrationTypeIds = scheduleTemplate.getRegistrationTypeId().split(",");
+            String[] RegistrationTypeIds = scheduleTemplate.getRegistrationTypeIds().split(",");
+            List<RegistrationType> registrationTypes = new ArrayList<>();
             for (String registrationTypeId : RegistrationTypeIds) {
-                List<RegistrationType> registrationTypes = registrationMapper.selectById(Long.valueOf(registrationTypeId));
-                ScheduleTemplateVO scheduleTemplateVO = ScheduleTemplateVO.builder()
-                        .templateName(scheduleTemplate.getTemplateName())
-                        .registrationTypes(registrationTypes)
-                        .doctorId(BaseContext.getCurrentId())
-                        .afternoonCheckNumber(scheduleTemplate.getAfternoonCheckNumber())
-                        .morningCheckNumber(scheduleTemplate.getMorningCheckNumber())
-                        .id(scheduleTemplate.getId())
-                        .build();
-                scheduleTemplateVOS.add(scheduleTemplateVO);
+                registrationTypes.addAll(registrationMapper.selectById(Long.valueOf(registrationTypeId)));
             }
+            ScheduleTemplateVO scheduleTemplateVO = ScheduleTemplateVO.builder()
+                    .templateName(scheduleTemplate.getTemplateName())
+                    .registrationTypes(registrationTypes)
+                    .doctorId(BaseContext.getCurrentId())
+                    .afternoonCheckNumber(scheduleTemplate.getAfternoonCheckNumber())
+                    .morningCheckNumber(scheduleTemplate.getMorningCheckNumber())
+                    .id(scheduleTemplate.getId())
+                    .build();
+            scheduleTemplateVOS.add(scheduleTemplateVO);
+
 
         }
         return scheduleTemplateVOS;
@@ -227,9 +222,7 @@ public class DoctorServiceImpl implements DoctorService {
      */
     @Transactional
     public void updateTemplate(ScheduleTemplateDTO scheduleTemplateDTO) {
-        //先全把原来的全删了
-        scheduleMapper.deleteByTemplateId(scheduleTemplateDTO.getId());
-        //再把新的给加上去
+        //直接修改
         scheduleTemplateDTO.setDoctorId(BaseContext.getCurrentId());
         StringBuilder registrationTypeIds = new StringBuilder();
         for (Long registrationTypeId : scheduleTemplateDTO.getRegistrationTypes_Ids()) {
@@ -237,7 +230,7 @@ public class DoctorServiceImpl implements DoctorService {
             registrationTypeIds.append(",");
         }
         registrationTypeIds.deleteCharAt(registrationTypeIds.length() - 1);
-        scheduleMapper.insertTemplate(scheduleTemplateDTO, String.valueOf(registrationTypeIds));
+        scheduleMapper.updateTemplate(scheduleTemplateDTO, String.valueOf(registrationTypeIds));
     }
 
     /**
@@ -262,22 +255,157 @@ public class DoctorServiceImpl implements DoctorService {
      */
     @Transactional
     public List<Doctor_SchedulingVO> querySchedule(Long doctorId) {
-        List<Doctor_SchedulingTemp2> doctorSchedulingList = scheduleMapper.selectDoctorScheduleByDoctorId(doctorId);
+        List<Doctor_Scheduling> doctorSchedulingList = scheduleMapper.selectDoctorScheduleByDoctorId(doctorId);
         List<Doctor_SchedulingVO> doctorSchedulingVOS = new LinkedList<>();
-        for (Doctor_SchedulingTemp2 doctorScheduling : doctorSchedulingList) {
+        for (Doctor_Scheduling doctorScheduling : doctorSchedulingList) {
             Doctor_SchedulingVO doctorSchedulingVO = new Doctor_SchedulingVO();
+            String data = DataUtils.format(doctorScheduling.getData(), DataUtils.FORMAT_LONOGRAM);
             BeanUtils.copyProperties(doctorScheduling, doctorSchedulingVO);
-            //再来处理registrationType连表
-            String[] registrationTypeIds = doctorScheduling.getRegistrationTypeIds().split(",");
-            List<RegistrationType> registrationTypes = new LinkedList<>();
-            for (String registrationTypeId : registrationTypeIds) {
-                registrationTypes.addAll(registrationMapper.selectById(Long.valueOf(registrationTypeId)));
+            doctorSchedulingVO.setData(data);
+            if (doctorScheduling.getRegistrationTypeIds() != null) {
+                //再来处理registrationType连表
+                String[] registrationTypeIds = doctorScheduling.getRegistrationTypeIds().split(",");
+                List<RegistrationType> registrationTypes = new LinkedList<>();
+                for (String registrationTypeId : registrationTypeIds) {
+                    if (!registrationTypeId.equals("null")) {
+                        if (registrationTypes != null) {
+                            registrationTypes.addAll(registrationMapper.selectById(Long.valueOf(registrationTypeId)));
+                        }
+                    }else {
+                        registrationTypes = null;
+                    }
+                }
+                doctorSchedulingVO.setRegistrationTypes(registrationTypes);
+                doctorSchedulingVOS.add(doctorSchedulingVO);
+            } else {
+                doctorSchedulingVOS.add(doctorSchedulingVO);
             }
-            doctorSchedulingVO.setRegistrationTypes(registrationTypes);
-            doctorSchedulingVOS.add(doctorSchedulingVO);
         }
 
         return doctorSchedulingVOS;
+    }
+
+    /**
+     * 使用模板为某天排班
+     */
+    public void setScheduleWithTemplate(DoctorSetScheduleWithTemplate doctorSetScheduleWithTemplate) {
+        ScheduleTemplate scheduleTemplate = scheduleMapper.selectById(doctorSetScheduleWithTemplate.getTemplateId());
+        //新建一天的排班
+        Doctor_Scheduling doctorScheduling = new Doctor_Scheduling();
+        BeanUtils.copyProperties(scheduleTemplate, doctorScheduling);
+        doctorScheduling.setId(null);
+        doctorScheduling.setData(doctorSetScheduleWithTemplate.getDate());
+
+        scheduleMapper.updateByDoctorIdAndDate(BaseContext.getCurrentId(), doctorSetScheduleWithTemplate.getDate(), doctorScheduling);
+    }
+
+    /**
+     * 单独修改某天的排班
+     */
+    public void updateOneDaySchedule(Doctor_SchedulingTemp doctorSchedulingTemp) {
+        doctorSchedulingTemp.setDoctorId(BaseContext.getCurrentId());
+        ArrayList<String> futureDaysList = DataUtils.futureDaysList(7);
+        for (String onlineDay : futureDaysList) {
+            if (doctorSchedulingTemp.getData().equals(onlineDay)) {
+                throw new UpdateFailedException(MessageConstant.DELETE_FAILED_DOCTOR);
+            }
+        }
+        StringBuilder registrationTypeIds = new StringBuilder();
+        if (doctorSchedulingTemp.getRegistrationType_Ids().size() > 0) {
+            for (Long registrationTypeId : doctorSchedulingTemp.getRegistrationType_Ids()) {
+                registrationTypeIds.append(registrationTypeId);
+                registrationTypeIds.append(",");
+            }
+            registrationTypeIds.deleteCharAt(registrationTypeIds.length() - 1);
+        } else {
+            registrationTypeIds = null;
+        }
+        Doctor_Scheduling doctorScheduling = new Doctor_Scheduling();
+        BeanUtils.copyProperties(doctorSchedulingTemp, doctorScheduling);
+        doctorScheduling.setRegistrationTypeIds(String.valueOf(registrationTypeIds));
+        doctorScheduling.setDoctorId(BaseContext.getCurrentId());
+        String data = doctorSchedulingTemp.getData();
+
+        doctorMapper.updateOneDaySchedule(doctorScheduling, data);
+    }
+
+//    /**
+//     * 排班复制-周复制 (已废弃)
+//     */
+//    public void copyScheduleWeek_abandon(ScheduleCopy_week scheduleCopyWeek) {
+//        String year = DataUtils.getYear(new Date());
+//        //先取得复制源的排班日期
+//        List<LocalDate> sourceDates = DataUtils.getWeekDates(Integer.parseInt(year), scheduleCopyWeek.getSourceMonth(), scheduleCopyWeek.getSourceWeekNumber());
+//        //根据日期和医生id查找排班信息
+//        List<Doctor_Scheduling> sourceSchedulingList = new LinkedList<>();
+//        for (LocalDate sourceDate: sourceDates) {
+//            Doctor_Scheduling doctorScheduling = scheduleMapper.selectByDoctorIdAndDate(BaseContext.getCurrentId(), String.valueOf(sourceDate));
+//            sourceSchedulingList.add(doctorScheduling);
+//        }
+//
+//        //再根据目标日期进行复制
+//        List<LocalDate> targetDates = DataUtils.getWeekDates(Integer.parseInt(year), scheduleCopyWeek.getTargetMonth(), scheduleCopyWeek.getTargetWeekNumber());
+//        for (int i = 0; i < sourceSchedulingList.size(); i++) {
+//            scheduleMapper.copyOneDay(String.valueOf(targetDates.get(i)),sourceSchedulingList.get(i),BaseContext.getCurrentId());
+//        }
+//
+//
+//
+
+    /**
+     * 排班复制-周复制
+     */
+    public void copyScheduleWeek(ScheduleCopy_week weekNumber) {
+        //取得复制源的天数
+        int sourYear = Integer.parseInt(weekNumber.getSourWeekNumber().substring(0, 4));
+        int sourWeekNum = Integer.parseInt(weekNumber.getSourWeekNumber().substring(7, 9));
+        List<LocalDate> sourWeekDates = DataUtils.getWeekDates(sourYear, sourWeekNum);
+
+        //取得目标的天数
+        int targetYear = Integer.parseInt(weekNumber.getTargetWeekNumber().substring(0, 4));
+        int targetWeekNum = Integer.parseInt(weekNumber.getTargetWeekNumber().substring(7, 9));
+        List<LocalDate> targetWeekDates = DataUtils.getWeekDates(targetYear, targetWeekNum);
+
+        //取得复制源排班
+        List<Doctor_Scheduling> sourceSchedulingList = new LinkedList<>();
+        for (LocalDate sourDate : sourWeekDates) {
+            Doctor_Scheduling schedule = scheduleMapper.selectByDoctorIdAndDate(BaseContext.getCurrentId(), String.valueOf(sourDate));
+            sourceSchedulingList.add(schedule);
+        }
+        //更新操作
+        for (int i = 0; i < sourceSchedulingList.size(); i++) {
+            scheduleMapper.copyOneDay(String.valueOf(targetWeekDates.get(i)), sourceSchedulingList.get(i), BaseContext.getCurrentId());
+        }
+    }
+
+    /**
+     * 排班复制-月复制
+     */
+    public void copyScheduleMonth(ScheduleCopy_month scheduleCopyMonth) {
+        int sourceMonth = Integer.parseInt(scheduleCopyMonth.getSourMonthNumber().substring(6, 9));
+        int year = Integer.parseInt(DataUtils.getYear(new Date()));
+        List<LocalDate> sourceDates = DataUtils.getMonthDates(year, sourceMonth);
+        List<Doctor_Scheduling> sourceSchedulingList = new LinkedList<>();
+        for (LocalDate sourceDate : sourceDates) {
+            Doctor_Scheduling scheduling = scheduleMapper.selectByDoctorIdAndDate(BaseContext.getCurrentId(), String.valueOf(sourceDate));
+            sourceSchedulingList.add(scheduling);
+        }
+
+        int targetMonth = Integer.parseInt(scheduleCopyMonth.getTargetMonthNumber().substring(6, 9));
+        List<LocalDate> targetDates = DataUtils.getMonthDates(year, targetMonth);
+        for (int i = 0; i < sourceSchedulingList.size(); i++) {
+            scheduleMapper.copyOneDay(String.valueOf(targetDates.get(i)), sourceSchedulingList.get(i), BaseContext.getCurrentId());
+        }
+    }
+
+    /**
+     * 排班复制-日复制
+     */
+    public void copyScheduleDay(ScheduleCopy_day scheduleCopyDay) {
+        Doctor_Scheduling sourceSchedule = scheduleMapper.selectByDoctorIdAndDate(BaseContext.getCurrentId(), scheduleCopyDay.getSourDay());
+
+        scheduleMapper.copyOneDay(scheduleCopyDay.getTargetDay(), sourceSchedule, BaseContext.getCurrentId());
+
     }
 
 

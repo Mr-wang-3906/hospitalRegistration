@@ -1,8 +1,17 @@
 package hospital.utils;
 
+import hospital.constant.MessageConstant;
+import hospital.exception.FormatErrorException;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalAdjusters;
+import java.time.temporal.TemporalField;
+import java.time.temporal.WeekFields;
 import java.util.*;
 
 @SuppressWarnings("all")
@@ -283,5 +292,157 @@ public final class DataUtils {
 
         return list;
     }
+
+    /**
+     * 获取过去 x天到今天 的日期
+     * @param intervals
+     * @return
+     */
+    public static ArrayList<String> pastDaysList(int intervals ) {
+        ArrayList<String> pastDaysList = new ArrayList<>();
+        for (int i = 0; i <intervals; i++) {
+            pastDaysList.add(getPastDate(i));
+        }
+        Collections.reverse(pastDaysList);
+        return pastDaysList;
+    }
+
+    /**
+     * 获取 今天到未来x天 的日期
+     * @param intervals
+     * @return
+     */
+    public static ArrayList<String> futureDaysList(int intervals ) {
+        ArrayList<String> futureDaysList = new ArrayList<>();
+        for (int i = 0; i <intervals; i++) {
+            futureDaysList.add(getFutureDate(i));
+        }
+        return futureDaysList;
+    }
+
+    //得到过去日期
+    public static String getPastDate(int past) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.DAY_OF_YEAR, calendar.get(Calendar.DAY_OF_YEAR) - past);
+        Date today = calendar.getTime();
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+        return format.format(today);
+    }
+
+    //得到未来日期
+    public static String getFutureDate(int past) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.DAY_OF_YEAR, calendar.get(Calendar.DAY_OF_YEAR) + past);
+        Date today = calendar.getTime();
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+        return format.format(today);
+    }
+
+    /**
+     *根据年 月 周数 得到这一周的日期
+     */
+    public static List<LocalDate> getWeekDates(int year, int month, int week) throws FormatErrorException {
+        int weekCount = getWeekCount(year, month);
+        if (week > weekCount){
+            throw new FormatErrorException(month + "月只有" + weekCount + "周,请输入正确的周数");
+        }
+        List<LocalDate> weekDates = new ArrayList<>();
+
+        LocalDate firstDayOfMonth = LocalDate.of(year, month, 1);
+
+        // 找到指定月份的第一个星期一
+        LocalDate firstMonday = firstDayOfMonth.with(TemporalAdjusters.firstInMonth(DayOfWeek.MONDAY));
+
+        // 计算指定周数的第一天和最后一天
+        LocalDate firstDayOfWeek = firstMonday.plusWeeks(week - 1);
+        LocalDate lastDayOfWeek = firstDayOfWeek.plusDays(6);
+
+        // 将每一天添加到列表中
+        LocalDate currentDate = firstDayOfWeek;
+        while (!currentDate.isAfter(lastDayOfWeek)) {
+            weekDates.add(currentDate);
+            currentDate = currentDate.plusDays(1);
+        }
+
+        return weekDates;
+    }
+
+    /** 根据年 月数 得到所包含的周数 **/
+    public static int getWeekCount(int year, int month) {
+        YearMonth yearMonth = YearMonth.of(year, month);
+        TemporalField weekOfYear = WeekFields.ISO.weekOfYear();
+
+        LocalDate firstDayOfMonth = yearMonth.atDay(1);
+        int startWeek = firstDayOfMonth.get(weekOfYear);
+
+        LocalDate lastDayOfMonth = yearMonth.atEndOfMonth();
+        int endWeek = lastDayOfMonth.get(weekOfYear);
+
+        // 处理跨年的情况
+        if (endWeek < startWeek) {
+            int weeksInPreviousYear = YearMonth.of(year - 1, month).atEndOfMonth().get(weekOfYear);
+            endWeek += weeksInPreviousYear;
+        }
+
+        return endWeek - startWeek;
+    }
+
+    /**
+     * 根据年 周数 得到该周日期数
+     * @param year
+     * @param week
+     * @return
+     */
+    public static List<LocalDate> getWeekDates(int year, int week) {
+        List<LocalDate> weekDates = new ArrayList<>();
+
+        TemporalField weekOfYear = WeekFields.ISO.weekOfYear();
+
+        LocalDate firstDayOfYear = LocalDate.of(year, 1, 1);
+        int firstWeekOfYear = firstDayOfYear.get(weekOfYear);
+
+        LocalDate firstDayOfRequestedWeek = firstDayOfYear.with(ChronoField.ALIGNED_WEEK_OF_YEAR, week).plusDays(1);
+        LocalDate lastDayOfRequestedWeek = firstDayOfRequestedWeek.plusDays(6);
+
+        // 处理跨年的情况
+        if (week < firstWeekOfYear) {
+            firstDayOfRequestedWeek = firstDayOfRequestedWeek.plusWeeks(52);
+            lastDayOfRequestedWeek = firstDayOfRequestedWeek.plusDays(6);
+        }
+
+        // 将每一天添加到列表中
+        LocalDate currentDate = firstDayOfRequestedWeek;
+        while (!currentDate.isAfter(lastDayOfRequestedWeek)) {
+            weekDates.add(currentDate);
+            currentDate = currentDate.plusDays(1);
+        }
+
+        return weekDates;
+    }
+
+    /**
+     * 获取某年某月所有的日期
+     * @param year
+     * @param month
+     * @return
+     */
+        public static List<LocalDate> getMonthDates(int year, int month) {
+            List<LocalDate> monthDates = new ArrayList<>();
+
+            YearMonth yearMonth = YearMonth.of(year, month);
+            int daysInMonth = yearMonth.lengthOfMonth();
+
+            LocalDate firstDayOfMonth = yearMonth.atDay(1);
+            LocalDate lastDayOfMonth = yearMonth.atDay(daysInMonth);
+
+            // 将每一天添加到列表中
+            LocalDate currentDate = firstDayOfMonth;
+            while (!currentDate.isAfter(lastDayOfMonth)) {
+                monthDates.add(currentDate);
+                currentDate = currentDate.plusDays(1);
+            }
+
+            return monthDates;
+        }
 
 }

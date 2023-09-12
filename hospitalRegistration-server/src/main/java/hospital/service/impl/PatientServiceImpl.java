@@ -2,8 +2,15 @@ package hospital.service.impl;
 
 import hospital.constant.MessageConstant;
 import hospital.dto.LoginDTO;
+import hospital.dto.PatientCheckRegistrationDTO;
 import hospital.dto.PatientRegisterDTO;
+import hospital.entity.Doctor;
 import hospital.entity.Patient;
+import hospital.entity.Patient_Doctor_Scheduling;
+import hospital.entity.RegistrationType;
+import hospital.mapper.DoctorMapper;
+import hospital.mapper.RegistrationMapper;
+import hospital.mapper.ScheduleMapper;
 import hospital.temp.PatientInfo;
 import hospital.exception.PasswordErrorException;
 import hospital.exception.RegisterFailedException;
@@ -14,8 +21,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
+import javax.print.Doc;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 import static hospital.controller.doctor.DoctorController.verCode;
@@ -25,6 +35,15 @@ public class PatientServiceImpl implements PatientService {
 
     @Autowired
     private PatientMapper patientMapper;
+
+    @Autowired
+    private ScheduleMapper scheduleMapper;
+
+    @Autowired
+    private DoctorMapper doctorMapper;
+
+    @Autowired
+    private RegistrationMapper registrationMapper;
 
     /**
      * 患者登录
@@ -96,5 +115,29 @@ public class PatientServiceImpl implements PatientService {
         PatientInfo patientInfo = new PatientInfo();
         BeanUtils.copyProperties(patient, patientInfo);
         return patientInfo;
+    }
+
+    /**
+     * 查看挂号界面
+     */
+    public List<Doctor> checkRegistration(PatientCheckRegistrationDTO patientCheckRegistrationDTO) {
+        List<Patient_Doctor_Scheduling> patientDoctorSchedulings = scheduleMapper.selectPatientDoctorScheduling(patientCheckRegistrationDTO.getDate());
+        List<Doctor> doctors = new LinkedList<>();
+        if (patientDoctorSchedulings.size() > 0) {
+            for (Patient_Doctor_Scheduling patientDoctorScheduling : patientDoctorSchedulings) {
+                Long doctorId = patientDoctorScheduling.getDoctorId();
+                doctors.add(doctorMapper.selectByIdAndSection(doctorId,patientCheckRegistrationDTO.getSection()));
+            }
+        }else {
+            doctors.add(doctorMapper.selectByIdAndSection(null,patientCheckRegistrationDTO.getSection()));
+        }
+        return doctors;
+    }
+
+    /**
+     * 选择医生
+     */
+    public List<RegistrationType> choiceDoctor(Long doctorId) {
+        return registrationMapper.queryRegistrationType(doctorId);
     }
 }

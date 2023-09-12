@@ -1,12 +1,12 @@
 package hospital.controller.doctor;
 
 import hospital.context.BaseContext;
-import hospital.dto.DoctorRegisterDTO;
-import hospital.dto.ScheduleTemplateDTO;
+import hospital.dto.*;
 import hospital.entity.RegistrationType;
 import hospital.result.Result;
 import hospital.service.DoctorService;
 import hospital.temp.DoctorInfo;
+import hospital.temp.Doctor_SchedulingTemp;
 import hospital.vo.Doctor_SchedulingVO;
 import hospital.vo.ScheduleTemplateVO;
 import io.swagger.annotations.Api;
@@ -35,7 +35,7 @@ public class DoctorController {
     @PostMapping("/registerOther")
     @ApiOperation(value = "医生注册(他人注册)")
     public Result doctorRegisterOther(@RequestBody DoctorRegisterDTO doctorRegisterDTO, HttpServletRequest httpServletRequest) {
-        doctorService.insertNewDoctor(doctorRegisterDTO,httpServletRequest);
+        doctorService.insertNewDoctor(doctorRegisterDTO, httpServletRequest);
         return Result.success();
     }
 
@@ -44,7 +44,7 @@ public class DoctorController {
      */
     @GetMapping("/queryInfo")
     @ApiOperation(value = "查询医生信息")
-    public Result<DoctorInfo> doctorQueryInfo(){
+    public Result<DoctorInfo> doctorQueryInfo() {
         DoctorInfo doctorInfo = doctorService.queryInfoById(BaseContext.getCurrentId());
         return Result.success(doctorInfo);
     }
@@ -54,7 +54,7 @@ public class DoctorController {
      */
     @PostMapping("/updateInfo")
     @ApiOperation(value = "修改医生信息")
-    public Result doctorUpdateInfo(@RequestBody DoctorInfo doctorInfo){
+    public Result doctorUpdateInfo(@RequestBody DoctorInfo doctorInfo) {
         doctorService.updateInfo(doctorInfo);
         return Result.success();
     }
@@ -64,7 +64,7 @@ public class DoctorController {
      */
     @PostMapping("/registration/add")
     @ApiOperation(value = "新增挂号种类")
-    public Result doctorAddRegistration(@RequestBody RegistrationType registrationType){
+    public Result doctorAddRegistration(@RequestBody RegistrationType registrationType) {
         doctorService.addRegistrationType(registrationType);
         return Result.success();
     }
@@ -74,7 +74,7 @@ public class DoctorController {
      */
     @GetMapping("/registration/query")
     @ApiOperation(value = "查询挂号种类")
-    public Result<List<RegistrationType>> doctorQueryRegistration(){
+    public Result<List<RegistrationType>> doctorQueryRegistration() {
         List<RegistrationType> registrationTypes = doctorService.queryRegistrationType();
         return Result.success(registrationTypes);
     }
@@ -84,7 +84,7 @@ public class DoctorController {
      */
     @PostMapping("/registration/update")
     @ApiOperation("修改挂号种类")
-    public Result doctorUpdateRegistration(@RequestBody RegistrationType registrationType){
+    public Result doctorUpdateRegistration(@RequestBody RegistrationType registrationType) {
         doctorService.updateRegistrationType(registrationType);
         return Result.success();
     }
@@ -94,7 +94,7 @@ public class DoctorController {
      */
     @PostMapping("/registration/delete")
     @ApiOperation("删除挂号种类")
-    public Result doctorDeleteRegistration(@RequestBody List<Long> ids){
+    public Result doctorDeleteRegistration(@RequestBody List<Long> ids) {
         doctorService.deleteRegistrationType(ids);
         return Result.success();
     }
@@ -104,7 +104,7 @@ public class DoctorController {
      */
     @PostMapping("/template/add")
     @ApiOperation(value = "新增排班模板")
-    public Result doctorAddTemplate(@RequestBody ScheduleTemplateDTO scheduleTemplateDTO){
+    public Result doctorAddTemplate(@RequestBody ScheduleTemplateDTO scheduleTemplateDTO) {
         doctorService.addTemplate(scheduleTemplateDTO);
         return Result.success();
     }
@@ -114,7 +114,7 @@ public class DoctorController {
      */
     @GetMapping("/template/query")
     @ApiOperation(value = "查询排班模板")
-    public Result<List<ScheduleTemplateVO>> doctorQueryTemplates(){
+    public Result<List<ScheduleTemplateVO>> doctorQueryTemplates() {
         List<ScheduleTemplateVO> scheduleTemplates = doctorService.queryTemplate(BaseContext.getCurrentId());
         return Result.success(scheduleTemplates);
     }
@@ -124,7 +124,7 @@ public class DoctorController {
      */
     @PostMapping("/template/delete")
     @ApiOperation(value = "删除排班模板")
-    public Result doctorDeleteTemplates(@RequestBody List<Long> ids){
+    public Result doctorDeleteTemplates(@RequestBody List<Long> ids) {
         doctorService.deleteTemplates(ids);
         return Result.success();
     }
@@ -144,7 +144,7 @@ public class DoctorController {
      */
     @GetMapping("/schedule/query")
     @ApiOperation("排班信息查询")
-    public Result<List<Doctor_SchedulingVO>> doctorQuerySchedule(){
+    public Result<List<Doctor_SchedulingVO>> doctorQuerySchedule() {
         List<Doctor_SchedulingVO> doctorSchedules = doctorService.querySchedule(BaseContext.getCurrentId());
         return Result.success(doctorSchedules);
     }
@@ -153,10 +153,59 @@ public class DoctorController {
      * 模板安排某天排班
      */
     @PostMapping("/schedule/template")
-    @ApiOperation(value = "模板安排某天排班")
-    public Result doctorSetScheduleWithTemplate(){
-        //TODO
-        //目前强行把排班模板设置为一个模板只占用一条mysql数据,用id定位模板,之后需再加入 模板安排某天排班的操作
-        return null;
+    @ApiOperation(value = "使用模板为某天排班")
+    public Result doctorSetScheduleWithTemplate(@RequestBody DoctorSetScheduleWithTemplate doctorSetScheduleWithTemplate) {
+        doctorService.setScheduleWithTemplate(doctorSetScheduleWithTemplate);
+        return Result.success();
+    }
+
+    /**
+     * 单独修改某日排班
+     */
+    @PostMapping("/schedule/set")
+    @ApiOperation("单独修改某日排班")
+    public Result doctorSetOneDaySchedule(@RequestBody Doctor_SchedulingTemp doctorSchedulingTemp) {
+        doctorService.updateOneDaySchedule(doctorSchedulingTemp);
+        return Result.success();
+    }
+
+//    /**
+//     * 排班复制-周复制 (废弃)
+//     */
+//    @PostMapping("/schedule/copy/week")
+//    @ApiOperation(value = "排班复制-周复制")
+//    public Result scheduleCopyWeek(@RequestBody ScheduleCopy_week scheduleCopyWeek) {
+//        doctorService.copyScheduleWeek(scheduleCopyWeek);
+//        return Result.success();
+//
+
+    /**
+     * 排班复制-周复制
+     */
+    @PostMapping("/schedule/copy/week")
+    @ApiOperation(value = "排班复制-周复制")
+    public Result scheduleCopyWeek(@RequestBody ScheduleCopy_week scheduleCopyWeek) {
+        doctorService.copyScheduleWeek(scheduleCopyWeek);
+        return Result.success();
+    }
+
+    /**
+     * 排班复制-月复制
+     */
+    @PostMapping("/schedule/copy/month")
+    @ApiOperation(value = "排班复制-月复制")
+    public Result scheduleCopyMonth(@RequestBody ScheduleCopy_month scheduleCopyMonth) {
+        doctorService.copyScheduleMonth(scheduleCopyMonth);
+        return Result.success();
+    }
+
+    /**
+     * 排班复制-日复制
+     */
+    @PostMapping("/schedule/copy/day")
+    @ApiOperation(value = "排班复制-日复制")
+    public Result scheduleCopyDay(@RequestBody ScheduleCopy_day scheduleCopyDay) {
+        doctorService.copyScheduleDay(scheduleCopyDay);
+        return Result.success();
     }
 }

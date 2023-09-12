@@ -1,12 +1,10 @@
 package hospital.service;
 
-import hospital.dto.LoginDTO;
-import hospital.dto.DoctorRegisterDTO;
-import hospital.dto.ScheduleTemplateDTO;
+import hospital.dto.*;
 import hospital.entity.Doctor;
-import hospital.entity.Doctor_Scheduling;
 import hospital.entity.RegistrationType;
 import hospital.temp.DoctorInfo;
+import hospital.temp.Doctor_SchedulingTemp;
 import hospital.vo.Doctor_SchedulingVO;
 import hospital.vo.ScheduleTemplateVO;
 
@@ -39,4 +37,16 @@ public interface DoctorService {
     void updateInfo(DoctorInfo doctorInfo);
 
     List<Doctor_SchedulingVO> querySchedule(Long doctorId);
+
+    void setScheduleWithTemplate(DoctorSetScheduleWithTemplate doctorSetScheduleWithTemplate);
+
+    void updateOneDaySchedule(Doctor_SchedulingTemp doctorSchedulingTemp);
+
+//    void copyScheduleWeek_abandon(ScheduleCopy_week scheduleCopyWeek);
+
+    void copyScheduleWeek(ScheduleCopy_week weekNumber);
+
+    void copyScheduleMonth(ScheduleCopy_month scheduleCopyMonth);
+
+    void copyScheduleDay(ScheduleCopy_day scheduleCopyDay);
 }

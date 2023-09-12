@@ -1,7 +1,10 @@
 package hospital.controller.patient;
 
 import hospital.context.BaseContext;
+import hospital.dto.PatientCheckRegistrationDTO;
 import hospital.dto.PatientRegisterDTO;
+import hospital.entity.Doctor;
+import hospital.entity.RegistrationType;
 import hospital.temp.PatientInfo;
 import hospital.result.Result;
 import hospital.service.PatientService;
@@ -12,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 @RestController
 @RequestMapping("/patient")
@@ -28,7 +32,7 @@ public class PatientController {
     @PostMapping("/register")
     @ApiOperation("患者注册")
     public Result patientRegister(@RequestBody PatientRegisterDTO patientRegisterDTO, HttpServletRequest httpServletRequest) {
-        patientService.insertNewPatient(patientRegisterDTO,httpServletRequest);
+        patientService.insertNewPatient(patientRegisterDTO, httpServletRequest);
         return Result.success();
     }
 
@@ -37,8 +41,28 @@ public class PatientController {
      */
     @GetMapping("/queryInfo")
     @ApiOperation(value = "查询患者信息")
-    public Result<PatientInfo> patientQueryInfo(){
+    public Result<PatientInfo> patientQueryInfo() {
         PatientInfo patientInfo = patientService.queryInfo(BaseContext.getCurrentId());
         return Result.success(patientInfo);
+    }
+
+    /**
+     * 查看挂号界面
+     */
+    @PostMapping("/registration/check")
+    @ApiOperation(value = "查看挂号界面")
+    public Result<List<Doctor>> patientCheckRegistration(@RequestBody PatientCheckRegistrationDTO patientCheckRegistrationDTO) {
+        List<Doctor> doctors = patientService.checkRegistration(patientCheckRegistrationDTO);
+        return Result.success(doctors);
+    }
+
+    /**
+     * 选择医生
+     */
+    @GetMapping("/choice/{doctorId}")
+    @ApiOperation(value = "选择医生")
+    public Result<List<RegistrationType>> choiceDoctor(@PathVariable Long doctorId){
+        List<RegistrationType> registrationTypes = patientService.choiceDoctor(doctorId);
+        return Result.success(registrationTypes);
     }
 }
