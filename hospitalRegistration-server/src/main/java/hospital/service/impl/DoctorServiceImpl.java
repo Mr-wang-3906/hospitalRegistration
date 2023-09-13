@@ -4,10 +4,7 @@ import hospital.constant.MessageConstant;
 import hospital.context.BaseContext;
 import hospital.dto.*;
 import hospital.entity.*;
-import hospital.exception.DeletionNotAllowedException;
-import hospital.exception.PasswordErrorException;
-import hospital.exception.RegisterFailedException;
-import hospital.exception.UpdateFailedException;
+import hospital.exception.*;
 import hospital.mapper.*;
 import hospital.service.DoctorService;
 import hospital.temp.DoctorInfo;
@@ -295,6 +292,14 @@ public class DoctorServiceImpl implements DoctorService {
      * 使用模板为某天排班
      */
     public void setScheduleWithTemplate(DoctorSetScheduleWithTemplate doctorSetScheduleWithTemplate) {
+        // 将 java.sql.Date 转换为 java.time.LocalDate
+        LocalDate localDate = doctorSetScheduleWithTemplate.getDate().toLocalDate();
+        // 获取当前日期
+        LocalDate today = LocalDate.now();
+        // 比较日期
+        if (localDate.isBefore(today)) {
+            throw new DateException(MessageConstant.DATE_SET_ERROR);
+        }
         Patient_Doctor_Scheduling patientDoctorScheduling = scheduleMapper.selectPatientDoctorSchedulingByIdAndDate(BaseContext.getCurrentId(), doctorSetScheduleWithTemplate.getDate());
         if (patientDoctorScheduling != null) {
             throw new UpdateFailedException(MessageConstant.DELETE_FAILED_DOCTOR);
@@ -313,6 +318,14 @@ public class DoctorServiceImpl implements DoctorService {
      * 单独修改某天的排班
      */
     public void updateOneDaySchedule(Doctor_SchedulingTemp doctorSchedulingTemp) {
+        // 将 java.sql.Date 转换为 java.time.LocalDate
+        LocalDate localDate = LocalDate.parse(doctorSchedulingTemp.getData());
+        // 获取当前日期
+        LocalDate today = LocalDate.now();
+        // 比较日期
+        if (localDate.isBefore(today)) {
+            throw new DateException(MessageConstant.DATE_SET_ERROR);
+        }
         doctorSchedulingTemp.setDoctorId(BaseContext.getCurrentId());
         ArrayList<String> futureDaysList = DataUtils.futureDaysList(7);
         for (String onlineDay : futureDaysList) {
@@ -375,6 +388,16 @@ public class DoctorServiceImpl implements DoctorService {
         int targetYear = Integer.parseInt(weekNumber.getTargetWeekNumber().substring(0, 4));
         int targetWeekNum = Integer.parseInt(weekNumber.getTargetWeekNumber().substring(7, 9));
         List<LocalDate> targetWeekDates = DataUtils.getWeekDates(targetYear, targetWeekNum);
+        //检查是否有早于今天的
+        for (LocalDate targetDate : targetWeekDates) {
+            // 获取当前日期
+            LocalDate today = LocalDate.now();
+            // 比较日期
+            if (targetDate.isBefore(today)) {
+                throw new DateException(MessageConstant.DATE_SET_ERROR);
+            }
+        }
+
         //检查是否全放号了
         List<Patient_Doctor_Scheduling> patientDoctorSchedulings = new LinkedList<>();
         for (LocalDate targetDate : targetWeekDates) {
@@ -426,6 +449,16 @@ public class DoctorServiceImpl implements DoctorService {
 
         int targetMonth = Integer.parseInt(scheduleCopyMonth.getTargetMonthNumber().substring(5, 7));
         List<LocalDate> targetDates = DataUtils.getMonthDates(year, targetMonth);
+        //检查是否早于今天
+        for (LocalDate target : targetDates) {
+            // 获取当前日期
+            LocalDate today = LocalDate.now();
+            // 比较日期
+            if (target.isBefore(today)) {
+                throw new DateException(MessageConstant.DATE_SET_ERROR);
+            }
+        }
+
         for (int i = 0; i < (Math.min(targetDates.size(), sourceSchedulingList.size())); i++) {
             if (targetDates.get(i).equals(LocalDate.now())) {
                 for (int j = 0; j < 7; j++) {
@@ -447,6 +480,12 @@ public class DoctorServiceImpl implements DoctorService {
         Patient_Doctor_Scheduling patientDoctorScheduling = scheduleMapper.selectPatientDoctorSchedulingByIdAndDate(BaseContext.getCurrentId(), java.sql.Date.valueOf(scheduleCopyDay.getTargetDay()));
         if (patientDoctorScheduling != null) {
             throw new UpdateFailedException(MessageConstant.DELETE_FAILED_DOCTOR);
+        }
+        // 获取当前日期
+        LocalDate today = LocalDate.now();
+        // 比较日期
+        if (LocalDate.parse(scheduleCopyDay.getTargetDay()).isBefore(today)) {
+            throw new DateException(MessageConstant.DATE_SET_ERROR);
         }
 
         Doctor_Scheduling sourceSchedule = scheduleMapper.selectByDoctorIdAndDate(BaseContext.getCurrentId(), scheduleCopyDay.getSourDay());
@@ -488,7 +527,7 @@ public class DoctorServiceImpl implements DoctorService {
             for (AppointmentRecords appointmentRecord : appointmentRecordsList) {
                 // 使用空格进行分割，获取日期部分
                 String dateString = appointmentRecord.getRegistrationTime().split(" ")[0];
-                if (dateString.equals(date)){
+                if (dateString.equals(date)) {
                     Long patientId = appointmentRecord.getPatientId();
                     Patient patient = patientMapper.selectById(patientId);
                     int noShowNumber = appointmentMapper.countNo_ShowNumber(patientId);
@@ -508,9 +547,9 @@ public class DoctorServiceImpl implements DoctorService {
      */
     public void setPatientCredit(PatientAppointmentInfoDTO patientAppointmentInfoDTO) {
         Doctor doctor = doctorMapper.selectById(BaseContext.getCurrentId());
-        if (patientAppointmentInfoDTO.getStatus().equals("已完成")){
-            appointmentMapper.setStatusFinashed(doctor.getName(),patientAppointmentInfoDTO);
-        }else {
+        if (patientAppointmentInfoDTO.getStatus().equals("已完成")) {
+            appointmentMapper.setStatusFinashed(doctor.getName(), patientAppointmentInfoDTO);
+        } else {
             appointmentMapper.setStatusFinashed(doctor.getName(), patientAppointmentInfoDTO);
         }
     }

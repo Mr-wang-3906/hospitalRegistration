@@ -22,5 +22,6 @@ public class MessageConstant {
     public static final String DELETE_FAILED_DOCTOR = "已放号的排班不能修改";
     public static final String DELETE_FAILED_DOCTOR_SCHEDULE = "排班至少要有一种挂号种类";
     public static final String NET_ERROR = "网络错误";
+    public static final String DATE_SET_ERROR = "设置排班不能早于今天";
 
 }
