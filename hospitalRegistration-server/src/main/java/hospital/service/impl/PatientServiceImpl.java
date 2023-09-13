@@ -201,7 +201,7 @@ public class PatientServiceImpl implements PatientService {
         RegistrationType registrationTypes = registrationMapper.selectById(orders.getRegistrationTypeId());
 
         //然后更新历史订单
-        appointmentMapper.updateStatus(BaseContext.getCurrentId(), DataUtils.convertTimeFormat(orders.getChoiceTime()), "已完成");
+        appointmentMapper.updateStatus(BaseContext.getCurrentId(), DataUtils.convertTimeFormat(orders.getChoiceTime()), "已预约");
         if (num1 == 9) {
             scheduleMapper.updateConfirmPaymentNine(orders, registrationTypes.getEstimatedTime());
         } else {

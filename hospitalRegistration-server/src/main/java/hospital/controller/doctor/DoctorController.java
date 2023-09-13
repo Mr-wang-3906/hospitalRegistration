@@ -2,11 +2,13 @@ package hospital.controller.doctor;
 
 import hospital.context.BaseContext;
 import hospital.dto.*;
+import hospital.entity.Patient;
 import hospital.entity.RegistrationType;
 import hospital.result.Result;
 import hospital.service.DoctorService;
 import hospital.temp.DoctorInfo;
 import hospital.temp.Doctor_SchedulingTemp;
+import hospital.temp.PatientAppointmentInfo;
 import hospital.vo.Doctor_SchedulingVO;
 import hospital.vo.ScheduleTemplateVO;
 import io.swagger.annotations.Api;
@@ -16,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.sql.Date;
 import java.util.List;
 
 @RestController
@@ -216,6 +219,26 @@ public class DoctorController {
     @ApiOperation(value = "提前放号")
     public Result doctorDeliverRegistration(){
         doctorService.deliverRegistration();
+        return Result.success();
+    }
+
+    /**
+     * 查看某日每时段的挂号状态
+     */
+    @GetMapping("/registration/check/{date}")
+    @ApiOperation("查看某日每时段的挂号状态")
+    public Result<List<PatientAppointmentInfo>> doctorRegistrationCheck(@PathVariable String date){
+        List<PatientAppointmentInfo> patients = doctorService.registrationCheck(date);
+        return Result.success(patients);
+    }
+
+    /**
+     * 设置患者是否失约
+     */
+    @PostMapping("/setPatientCredit")
+    @ApiOperation("设置患者是否失约")
+    public Result setPatientCredit(@RequestBody PatientAppointmentInfoDTO patientAppointmentInfoDTO){
+        doctorService.setPatientCredit(patientAppointmentInfoDTO);
         return Result.success();
     }
 }

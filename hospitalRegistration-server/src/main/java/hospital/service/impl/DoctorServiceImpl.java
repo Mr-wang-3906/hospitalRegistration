@@ -8,12 +8,11 @@ import hospital.exception.DeletionNotAllowedException;
 import hospital.exception.PasswordErrorException;
 import hospital.exception.RegisterFailedException;
 import hospital.exception.UpdateFailedException;
-import hospital.mapper.DoctorMapper;
-import hospital.mapper.RegistrationMapper;
-import hospital.mapper.ScheduleMapper;
+import hospital.mapper.*;
 import hospital.service.DoctorService;
 import hospital.temp.DoctorInfo;
 import hospital.temp.Doctor_SchedulingTemp;
+import hospital.temp.PatientAppointmentInfo;
 import hospital.utils.DataUtils;
 import hospital.vo.Doctor_SchedulingVO;
 import hospital.vo.ScheduleTemplateVO;
@@ -33,6 +32,10 @@ import static hospital.controller.doctor.DoctorController.verCode;
 @Service
 public class DoctorServiceImpl implements DoctorService {
 
+
+    @Autowired
+    private AppointmentMapper appointmentMapper;
+
     @Autowired
     private DoctorMapper doctorMapper;
 
@@ -41,6 +44,9 @@ public class DoctorServiceImpl implements DoctorService {
 
     @Autowired
     private ScheduleMapper scheduleMapper;
+
+    @Autowired
+    private PatientMapper patientMapper;
 
     /**
      * 新增医生
@@ -401,7 +407,7 @@ public class DoctorServiceImpl implements DoctorService {
         ArrayList<String> futureDaysList = DataUtils.futureDaysList(7);
         List<Patient_Doctor_Scheduling> patientDoctorSchedulings = new LinkedList<>();
         for (String onlineDate : futureDaysList) {
-                patientDoctorSchedulings.add(scheduleMapper.selectPatientDoctorSchedulingByIdAndDate(BaseContext.getCurrentId(), java.sql.Date.valueOf(onlineDate)));
+            patientDoctorSchedulings.add(scheduleMapper.selectPatientDoctorSchedulingByIdAndDate(BaseContext.getCurrentId(), java.sql.Date.valueOf(onlineDate)));
         }
         if (patientDoctorSchedulings.stream()
                 .filter(Objects::nonNull)
@@ -409,7 +415,7 @@ public class DoctorServiceImpl implements DoctorService {
             throw new UpdateFailedException(MessageConstant.DELETE_FAILED_DOCTOR);
         }
 
-        int sourceMonth = Integer.parseInt(scheduleCopyMonth.getSourMonthNumber().substring(5,7));
+        int sourceMonth = Integer.parseInt(scheduleCopyMonth.getSourMonthNumber().substring(5, 7));
         int year = Integer.parseInt(DataUtils.getYear(new Date()));
         List<LocalDate> sourceDates = DataUtils.getMonthDates(year, sourceMonth);
         List<Doctor_Scheduling> sourceSchedulingList = new LinkedList<>();
@@ -462,6 +468,50 @@ public class DoctorServiceImpl implements DoctorService {
             //再更新患者挂号界面
             scheduleMapper.updatePatientDoctorScheduling(doctorScheduling.getDoctorId(), doctorScheduling.getData(), doctorScheduling.getRegistrationTypeIds());
 
+        }
+    }
+
+    /**
+     * 查看某天每时段挂号状态
+     */
+    public List<PatientAppointmentInfo> registrationCheck(String date) {
+        Patient_Doctor_Scheduling patientDoctorScheduling = scheduleMapper.selectPatientDoctorSchedulingByDoctorIdAndDate(BaseContext.getCurrentId(), date);
+        Doctor_Scheduling doctorScheduling = scheduleMapper.selectByDoctorIdAndDate(BaseContext.getCurrentId(), date);
+        int morningNUm = doctorScheduling.getMorningCheckNumber() - patientDoctorScheduling.getRegistrationNumberMorning();
+        int afternoonNUm = doctorScheduling.getAfternoonCheckNumber() - patientDoctorScheduling.getRegistrationNumberAfternoon();
+        if (morningNUm + afternoonNUm == 0) {
+            return null;
+        } else {
+            List<PatientAppointmentInfo> patients = new LinkedList<>();
+            Doctor doctor = doctorMapper.selectById(BaseContext.getCurrentId());
+            List<AppointmentRecords> appointmentRecordsList = appointmentMapper.selectByDoctorName(doctor.getName());
+            for (AppointmentRecords appointmentRecord : appointmentRecordsList) {
+                // 使用空格进行分割，获取日期部分
+                String dateString = appointmentRecord.getRegistrationTime().split(" ")[0];
+                if (dateString.equals(date)){
+                    Long patientId = appointmentRecord.getPatientId();
+                    Patient patient = patientMapper.selectById(patientId);
+                    int noShowNumber = appointmentMapper.countNo_ShowNumber(patientId);
+                    patient.setNoShowNumber(noShowNumber);
+                    PatientAppointmentInfo patientAppointmentInfo = new PatientAppointmentInfo();
+                    BeanUtils.copyProperties(patient, patientAppointmentInfo);
+                    patientAppointmentInfo.setAppointmentNumber(appointmentRecord.getRegistrationTime());
+                    patients.add(patientAppointmentInfo);
+                }
+            }
+            return patients;
+        }
+    }
+
+    /**
+     * 设置患者是否失约
+     */
+    public void setPatientCredit(PatientAppointmentInfoDTO patientAppointmentInfoDTO) {
+        Doctor doctor = doctorMapper.selectById(BaseContext.getCurrentId());
+        if (patientAppointmentInfoDTO.getStatus().equals("已完成")){
+            appointmentMapper.setStatusFinashed(doctor.getName(),patientAppointmentInfoDTO);
+        }else {
+            appointmentMapper.setStatusFinashed(doctor.getName(), patientAppointmentInfoDTO);
         }
     }
 

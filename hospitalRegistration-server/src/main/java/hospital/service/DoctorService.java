@@ -5,6 +5,7 @@ import hospital.entity.Doctor;
 import hospital.entity.RegistrationType;
 import hospital.temp.DoctorInfo;
 import hospital.temp.Doctor_SchedulingTemp;
+import hospital.temp.PatientAppointmentInfo;
 import hospital.vo.Doctor_SchedulingVO;
 import hospital.vo.ScheduleTemplateVO;
 
@@ -51,4 +52,8 @@ public interface DoctorService {
     void copyScheduleDay(ScheduleCopy_day scheduleCopyDay);
 
     void deliverRegistration();
+
+    List<PatientAppointmentInfo> registrationCheck(String date);
+
+    void setPatientCredit(PatientAppointmentInfoDTO patientAppointmentInfoDTO);
 }

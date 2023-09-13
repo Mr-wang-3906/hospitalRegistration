@@ -68,4 +68,6 @@ public interface ScheduleMapper {
     void updateConfirmPaymentSixTeen(@Param("order") Orders orders, @Param("estimatedTime") String estimatedTime);
 
     List<Patient_Doctor_Scheduling> selectPatientDoctorSchedulingByDoctorId(Long doctorId);
+
+    Patient_Doctor_Scheduling selectPatientDoctorSchedulingByDoctorIdAndDate(@Param("doctorId") Long doctorId, @Param("date") String date);
 }
