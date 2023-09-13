@@ -1,6 +1,7 @@
 package hospital.service.impl;
 
 import hospital.constant.MessageConstant;
+import hospital.context.BaseContext;
 import hospital.dto.LoginDTO;
 import hospital.dto.PatientCheckRegistrationDTO;
 import hospital.dto.PatientRegisterDTO;
@@ -8,25 +9,27 @@ import hospital.entity.Doctor;
 import hospital.entity.Patient;
 import hospital.entity.Patient_Doctor_Scheduling;
 import hospital.entity.RegistrationType;
-import hospital.mapper.DoctorMapper;
-import hospital.mapper.RegistrationMapper;
-import hospital.mapper.ScheduleMapper;
+import hospital.exception.NetException;
+import hospital.mapper.*;
+import hospital.temp.Orders;
 import hospital.temp.PatientInfo;
 import hospital.exception.PasswordErrorException;
 import hospital.exception.RegisterFailedException;
-import hospital.mapper.PatientMapper;
 import hospital.service.PatientService;
+import hospital.utils.DataUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
-import javax.print.Doc;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import javax.sql.DataSource;
+import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 import static hospital.controller.doctor.DoctorController.verCode;
 
@@ -44,6 +47,17 @@ public class PatientServiceImpl implements PatientService {
 
     @Autowired
     private RegistrationMapper registrationMapper;
+
+    /**
+     * 用于取消定时任务
+     **/
+    // 获取服务器的全局线程池
+    ScheduledExecutorService executorService = Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors());
+    static ScheduledFuture<?> scheduledFuture;
+
+
+    @Autowired
+    private AppointmentMapper appointmentMapper;
 
     /**
      * 患者登录
@@ -126,10 +140,10 @@ public class PatientServiceImpl implements PatientService {
         if (patientDoctorSchedulings.size() > 0) {
             for (Patient_Doctor_Scheduling patientDoctorScheduling : patientDoctorSchedulings) {
                 Long doctorId = patientDoctorScheduling.getDoctorId();
-                doctors.add(doctorMapper.selectByIdAndSection(doctorId,patientCheckRegistrationDTO.getSection()));
+                doctors.add(doctorMapper.selectByIdAndSection(doctorId, patientCheckRegistrationDTO.getSection()));
             }
-        }else {
-            doctors.add(doctorMapper.selectByIdAndSection(null,patientCheckRegistrationDTO.getSection()));
+        } else {
+            doctors.add(doctorMapper.selectByIdAndSection(null, patientCheckRegistrationDTO.getSection()));
         }
         return doctors;
     }
@@ -137,7 +151,80 @@ public class PatientServiceImpl implements PatientService {
     /**
      * 选择医生
      */
-    public List<RegistrationType> choiceDoctor(Long doctorId) {
-        return registrationMapper.queryRegistrationType(doctorId);
+    public List<Patient_Doctor_Scheduling> choiceDoctor(Long doctorId) {
+        return scheduleMapper.selectPatientDoctorSchedulingByDoctorId(doctorId);
     }
+
+    /**
+     * 提交订单
+     */
+    public void choiceTime(Orders orders) {
+        Long patientId = BaseContext.getCurrentId();
+        /* 先设置订单状态,只有付款了才会更新挂号界面 */
+        Doctor doctor = doctorMapper.selectById(orders.getDoctorId());
+        //先设置历史订单-待支付
+        appointmentMapper.setStatusOngoing(patientId, DataUtils.convertTimeFormat(orders.getChoiceTime()), doctor.getName(), "待支付");
+
+        //设置定时任务:
+        // 定义任务
+        Runnable task = () -> {
+            // 将待支付改为已取消
+            appointmentMapper.updateStatus(patientId, DataUtils.convertTimeFormat(orders.getChoiceTime()), "已取消");
+        };
+
+        scheduledFuture = executorService.schedule(task, 15, TimeUnit.MINUTES);
+
+    }
+
+    //设置定时任务取消函数,用于更新用户付款的更新
+    public static void cancelTask() {
+        if (scheduledFuture != null) {
+            scheduledFuture.cancel(true);
+        }
+    }
+
+
+    /**
+     * 确认付款
+     */
+    public void confirmPayment(Orders orders) {
+        //先确认会不会有bug
+        Patient_Doctor_Scheduling patientDoctorSchedulings = scheduleMapper.selectPatientDoctorSchedulingByIdAndDate(orders.getDoctorId(), orders.getDate());
+        if (patientDoctorSchedulings.getRegistrationNumberMorning() == 0 || patientDoctorSchedulings.getRegistrationNumberAfternoon() == 0) {
+            appointmentMapper.updateStatus(BaseContext.getCurrentId(), DataUtils.convertTimeFormat(orders.getChoiceTime()), "已终止");
+            throw new NetException(MessageConstant.NET_ERROR);
+        }
+        //先取消之前的定时任务
+        cancelTask();
+        //再更新挂号界面
+        int num1 = Integer.parseInt(orders.getChoiceTime().substring(0, 1));
+        RegistrationType registrationTypes = registrationMapper.selectById(orders.getRegistrationTypeId());
+
+        //然后更新历史订单
+        appointmentMapper.updateStatus(BaseContext.getCurrentId(), DataUtils.convertTimeFormat(orders.getChoiceTime()), "已完成");
+        if (num1 == 9) {
+            scheduleMapper.updateConfirmPaymentNine(orders, registrationTypes.getEstimatedTime());
+        } else {
+            int num2 = Integer.parseInt(orders.getChoiceTime().substring(0, 2));
+            switch (num2) {
+                case 10:
+                    scheduleMapper.updateConfirmPaymentTen(orders, registrationTypes.getEstimatedTime());
+                    break;
+                case 11:
+                    scheduleMapper.updateConfirmPaymentEleven(orders, registrationTypes.getEstimatedTime());
+                    break;
+                case 14:
+                    scheduleMapper.updateConfirmPaymentFourteen(orders, registrationTypes.getEstimatedTime());
+                    break;
+                case 15:
+                    scheduleMapper.updateConfirmPaymentFifTeen(orders, registrationTypes.getEstimatedTime());
+                    break;
+                case 16:
+                    scheduleMapper.updateConfirmPaymentSixTeen(orders, registrationTypes.getEstimatedTime());
+                    break;
+            }
+        }
+    }
+
+
 }

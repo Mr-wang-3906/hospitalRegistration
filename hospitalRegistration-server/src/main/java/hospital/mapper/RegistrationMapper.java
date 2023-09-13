@@ -16,7 +16,7 @@ public interface RegistrationMapper {
 
     void deleteRegistrationType(Long id);
 
-    List<RegistrationType> selectById(Long registrationTypeId);
+    RegistrationType selectById(Long registrationTypeId);
 
     RegistrationType queryRegistrationTypeOnlyOne(@Param("doctorId") Long doctorId, @Param("registrationName") String registrationName);
 

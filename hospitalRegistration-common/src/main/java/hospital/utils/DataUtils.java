@@ -1,6 +1,5 @@
 package hospital.utils;
 
-import hospital.constant.MessageConstant;
 import hospital.exception.FormatErrorException;
 
 import java.text.ParseException;
@@ -8,6 +7,7 @@ import java.text.SimpleDateFormat;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
 import java.time.temporal.TemporalAdjusters;
 import java.time.temporal.TemporalField;
@@ -443,6 +443,19 @@ public final class DataUtils {
             }
 
             return monthDates;
+        }
+
+        //将 HH-MM 转换成 YYYY-MM-DD HH:MM:00
+        public static String convertTimeFormat(String time) {
+            LocalDate today = LocalDate.now();
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            String formattedDate = today.format(formatter);
+
+            String[] parts = time.split("-");
+            String startTime = parts[0] + ":00";
+            String endTime = parts[1] + ":00";
+
+            return formattedDate + " " + startTime + "-" + endTime;
         }
 
 }

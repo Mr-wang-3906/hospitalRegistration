@@ -45,7 +45,7 @@ public class JwtTokenPatientInterceptor implements HandlerInterceptor {
         }
 
         //1、从请求头中获取令牌
-        String token = request.getHeader(jwtProperties.getDoctorTokenName());
+        String token = request.getHeader(jwtProperties.getPatientTokenName());
 
         //2、校验令牌
         try {
@@ -59,6 +59,7 @@ public class JwtTokenPatientInterceptor implements HandlerInterceptor {
         } catch (Exception ex) {
             //4、不通过，响应401 状态码
             response.setStatus(401);
+            ex.printStackTrace();
             throw new UserNotLoginException(MessageConstant.USER_NOT_LOGIN);
         }
     }

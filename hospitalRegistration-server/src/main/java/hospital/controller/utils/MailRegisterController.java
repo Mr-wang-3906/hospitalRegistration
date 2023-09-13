@@ -37,12 +37,17 @@ import java.util.concurrent.TimeUnit;
 @Api(tags = "邮箱注册")
 public class MailRegisterController {
 
-    //这个是邮件类，须导入
+    //导入邮件类
     @Autowired
     JavaMailSenderImpl mailSender;
 
+/*
     //创建线程池对象
-    ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(3);
+    ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(3)
+*/
+
+    // 获取服务器的全局线程池
+    ScheduledExecutorService executorService = Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors());
 
 
     /**
@@ -53,29 +58,52 @@ public class MailRegisterController {
     @ApiOperation(value = "发送邮箱注册码邮箱")
     public Result sendEmail(@RequestParam String emailAddress, HttpServletRequest request) {
         HttpSession session = request.getSession();
-        //验证码
-        String verCode = VerifyCode.setVerifyCode();
-        //发送时间 --这里自己写了一个时间类，格式转换，用于邮件发送
-        String time = DataUtils.format(new Date());
-        Map<String, String> map = new HashMap<>();
-        map.put("code", verCode);
-        map.put("email", emailAddress);
-        //验证码和邮箱，一起放入session中
-        session.setAttribute("verCode", map);
         Map<String, String> codeMap = (Map<String, String>) session.getAttribute("verCode");
-        //创建计时线程池，到时间自动移除验证码
-        try {
-            scheduledExecutorService.schedule(() -> {
-                while (!Thread.currentThread().isInterrupted()) {
-                    if (emailAddress.equals(codeMap.get("email"))) {
-                        session.removeAttribute("verCode");
-                    }
+        String time = DataUtils.format(new Date());
+        String verCode = VerifyCode.setVerifyCode();
+        if (codeMap != null && emailAddress.equals(codeMap.get("email"))) {
+            long lastTimestamp = 0;
+            if (codeMap.containsKey("timestamp")) {
+                // 获取上次发送的时间戳
+                lastTimestamp = Long.parseLong(codeMap.get("timestamp"));
+            }
+            // 获取当前时间戳
+            long currentTimestamp = System.currentTimeMillis();
+            // 检查时间间隔是否小于5分钟
+            if (currentTimestamp - lastTimestamp < 5 * 60 * 1000) {
+                // 检查操作次数是否达到限制
+                int operationCount = Integer.parseInt(codeMap.getOrDefault("count", "0"));
+                if (operationCount >= 3) {
+                    // 获取上次发送的时间
+                    String lastSendTime = codeMap.getOrDefault("time", "");
+                    throw new RegisterFailedException("操作频繁，请稍后再试"); // 抛出异常或返回错误信息
+                } else {
+                    // 更新操作次数
+                    codeMap.put("count", String.valueOf(operationCount + 1));
                 }
-            }, 5 * 60, TimeUnit.SECONDS);
-        } catch (Exception e) {
-            //发送失败--服务器繁忙
-            throw new RegisterFailedException(MessageConstant.SEND_EMAIL_FAILED);
+            } else {
+                // 重置操作次数
+                codeMap.put("count", "1");
+            }
+        } else {
+            // 创建新的验证码记录
+            verCode = VerifyCode.setVerifyCode();
+            codeMap = new HashMap<>();
+            codeMap.put("code", verCode);
+            codeMap.put("email", emailAddress);
+            codeMap.put("count", "1");
+            session.setAttribute("verCode", codeMap);
         }
+
+        // 更新时间戳
+        codeMap.put("timestamp", String.valueOf(System.currentTimeMillis()));
+        codeMap.put("time", time);
+
+        // 创建计时线程池，到时间自动移除验证码
+        executorService.schedule(() -> {
+            session.removeAttribute("verCode");
+        }, 5 * 60, TimeUnit.SECONDS);
+
         //一下为发送邮件部分
         MimeMessage mimeMessage = null;
         MimeMessageHelper helper = null;

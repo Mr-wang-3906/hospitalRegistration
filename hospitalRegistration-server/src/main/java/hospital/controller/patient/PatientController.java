@@ -1,10 +1,13 @@
 package hospital.controller.patient;
 
+import hospital.constant.MessageConstant;
 import hospital.context.BaseContext;
 import hospital.dto.PatientCheckRegistrationDTO;
 import hospital.dto.PatientRegisterDTO;
 import hospital.entity.Doctor;
+import hospital.entity.Patient_Doctor_Scheduling;
 import hospital.entity.RegistrationType;
+import hospital.temp.Orders;
 import hospital.temp.PatientInfo;
 import hospital.result.Result;
 import hospital.service.PatientService;
@@ -61,8 +64,37 @@ public class PatientController {
      */
     @GetMapping("/choice/{doctorId}")
     @ApiOperation(value = "选择医生")
-    public Result<List<RegistrationType>> choiceDoctor(@PathVariable Long doctorId){
-        List<RegistrationType> registrationTypes = patientService.choiceDoctor(doctorId);
-        return Result.success(registrationTypes);
+    public Result<List<Patient_Doctor_Scheduling>> choiceDoctor(@PathVariable Long doctorId) {
+        List<Patient_Doctor_Scheduling> patientDoctorSchedulings = patientService.choiceDoctor(doctorId);
+        return Result.success(patientDoctorSchedulings);
+    }
+
+    /**
+     * 提交订单
+     */
+    @PostMapping("/choice/time")
+    @ApiOperation(value = "提交订单")
+    public Result choiceTime(@RequestBody Orders orders) {
+        patientService.choiceTime(orders);
+        return Result.success();
+    }
+
+    /**
+     * 确认付款
+     */
+    @PostMapping("/confirmPayment")
+    @ApiOperation(value = "确认付款")
+    public Result confirmPayment(@RequestBody Orders orders){
+        patientService.confirmPayment(orders);
+            return Result.success();
+    }
+
+    /**
+     * 付款功能
+     */
+    @PostMapping("/pay")
+    @ApiOperation(value = "付款")
+    public Result pay(){
+        return Result.success();
     }
 }

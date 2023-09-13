@@ -208,4 +208,14 @@ public class DoctorController {
         doctorService.copyScheduleDay(scheduleCopyDay);
         return Result.success();
     }
+
+    /**
+     * 放号
+     */
+    @GetMapping("/registration/deliver")
+    @ApiOperation(value = "提前放号")
+    public Result doctorDeliverRegistration(){
+        doctorService.deliverRegistration();
+        return Result.success();
+    }
 }

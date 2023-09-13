@@ -49,4 +49,6 @@ public interface DoctorService {
     void copyScheduleMonth(ScheduleCopy_month scheduleCopyMonth);
 
     void copyScheduleDay(ScheduleCopy_day scheduleCopyDay);
+
+    void deliverRegistration();
 }

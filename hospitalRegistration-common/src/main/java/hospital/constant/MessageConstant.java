@@ -19,7 +19,8 @@ public class MessageConstant {
     public static final String REGISTER_TIMEOUT = "验证码已过期";
     public static final String REGISTER_FAILED_BUSY = "注册失败,服务器繁忙";
     public static final String DELETE_FAILED_TEMPLATE = "排班模板至少要有一种挂号种类";
-    public static final String DELETE_FAILED_DOCTOR = "医生已放号,排班不能修改";
+    public static final String DELETE_FAILED_DOCTOR = "已放号的排班不能修改";
     public static final String DELETE_FAILED_DOCTOR_SCHEDULE = "排班至少要有一种挂号种类";
+    public static final String NET_ERROR = "网络错误";
 
 }

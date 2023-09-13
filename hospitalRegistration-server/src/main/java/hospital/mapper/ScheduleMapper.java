@@ -4,6 +4,7 @@ import hospital.dto.ScheduleTemplateDTO;
 import hospital.entity.Doctor_Scheduling;
 import hospital.entity.Patient_Doctor_Scheduling;
 import hospital.entity.ScheduleTemplate;
+import hospital.temp.Orders;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -28,7 +29,7 @@ public interface ScheduleMapper {
 
     void updateByRegistrationTypeId(Long registrationTypeId);
 
-    void insertNewDoctorSchedule(@Param("doctorId") Long doctorId,@Param("date") Date date);
+    void insertNewDoctorSchedule(@Param("doctorId") Long doctorId, @Param("date") Date date);
 
     List<Doctor_Scheduling> selectDoctorSchedulingTempByRegistrationTypeId(@Param("doctorId") Long doctorId, @Param("registrationTypeId") Long id);
 
@@ -51,4 +52,20 @@ public interface ScheduleMapper {
     void deleteDoctorSchedulingMonth(int lastMonth);
 
     void insertNextMonthSchedules(@Param("doctorId") Long doctorId, @Param("nextDate") String nextDate);
+
+    Patient_Doctor_Scheduling selectPatientDoctorSchedulingByIdAndDate(@Param("doctorId") Long doctorId, @Param("date") java.sql.Date date);
+
+    void updateConfirmPaymentNine(@Param("order") Orders orders, @Param("estimatedTime") String estimatedTime);
+
+    void updateConfirmPaymentTen(@Param("order") Orders orders, @Param("estimatedTime") String estimatedTime);
+
+    void updateConfirmPaymentEleven(@Param("order") Orders orders, @Param("estimatedTime") String estimatedTime);
+
+    void updateConfirmPaymentFourteen(@Param("order") Orders orders, @Param("estimatedTime") String estimatedTime);
+
+    void updateConfirmPaymentFifTeen(@Param("order") Orders orders, @Param("estimatedTime") String estimatedTime);
+
+    void updateConfirmPaymentSixTeen(@Param("order") Orders orders, @Param("estimatedTime") String estimatedTime);
+
+    List<Patient_Doctor_Scheduling> selectPatientDoctorSchedulingByDoctorId(Long doctorId);
 }

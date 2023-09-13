@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 
 public class JavaTest {
@@ -19,6 +21,8 @@ public class JavaTest {
         LocalDate previousMonth = currentDate.minusMonths(1);
         System.out.println(previousMonth.getMonthValue());
     }
+    // 获取服务器的全局线程池
+    ScheduledExecutorService executorService = Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors());
 
 }
 

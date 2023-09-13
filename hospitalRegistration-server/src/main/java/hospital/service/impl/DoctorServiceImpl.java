@@ -189,7 +189,7 @@ public class DoctorServiceImpl implements DoctorService {
             String[] RegistrationTypeIds = scheduleTemplate.getRegistrationTypeIds().split(",");
             List<RegistrationType> registrationTypes = new ArrayList<>();
             for (String registrationTypeId : RegistrationTypeIds) {
-                registrationTypes.addAll(registrationMapper.selectById(Long.valueOf(registrationTypeId)));
+                registrationTypes.add(registrationMapper.selectById(Long.valueOf(registrationTypeId)));
             }
             ScheduleTemplateVO scheduleTemplateVO = ScheduleTemplateVO.builder()
                     .templateName(scheduleTemplate.getTemplateName())
@@ -269,9 +269,9 @@ public class DoctorServiceImpl implements DoctorService {
                 for (String registrationTypeId : registrationTypeIds) {
                     if (!registrationTypeId.equals("null")) {
                         if (registrationTypes != null) {
-                            registrationTypes.addAll(registrationMapper.selectById(Long.valueOf(registrationTypeId)));
+                            registrationTypes.add(registrationMapper.selectById(Long.valueOf(registrationTypeId)));
                         }
-                    }else {
+                    } else {
                         registrationTypes = null;
                     }
                 }
@@ -289,6 +289,10 @@ public class DoctorServiceImpl implements DoctorService {
      * 使用模板为某天排班
      */
     public void setScheduleWithTemplate(DoctorSetScheduleWithTemplate doctorSetScheduleWithTemplate) {
+        Patient_Doctor_Scheduling patientDoctorScheduling = scheduleMapper.selectPatientDoctorSchedulingByIdAndDate(BaseContext.getCurrentId(), doctorSetScheduleWithTemplate.getDate());
+        if (patientDoctorScheduling != null) {
+            throw new UpdateFailedException(MessageConstant.DELETE_FAILED_DOCTOR);
+        }
         ScheduleTemplate scheduleTemplate = scheduleMapper.selectById(doctorSetScheduleWithTemplate.getTemplateId());
         //新建一天的排班
         Doctor_Scheduling doctorScheduling = new Doctor_Scheduling();
@@ -365,7 +369,16 @@ public class DoctorServiceImpl implements DoctorService {
         int targetYear = Integer.parseInt(weekNumber.getTargetWeekNumber().substring(0, 4));
         int targetWeekNum = Integer.parseInt(weekNumber.getTargetWeekNumber().substring(7, 9));
         List<LocalDate> targetWeekDates = DataUtils.getWeekDates(targetYear, targetWeekNum);
-
+        //检查是否全放号了
+        List<Patient_Doctor_Scheduling> patientDoctorSchedulings = new LinkedList<>();
+        for (LocalDate targetDate : targetWeekDates) {
+            patientDoctorSchedulings.add(scheduleMapper.selectPatientDoctorSchedulingByIdAndDate(BaseContext.getCurrentId(), java.sql.Date.valueOf(targetDate)));
+        }
+        if (patientDoctorSchedulings.stream()
+                .filter(Objects::nonNull)
+                .count() == 7) {
+            throw new UpdateFailedException(MessageConstant.DELETE_FAILED_DOCTOR);
+        }
         //取得复制源排班
         List<Doctor_Scheduling> sourceSchedulingList = new LinkedList<>();
         for (LocalDate sourDate : sourWeekDates) {
@@ -374,7 +387,9 @@ public class DoctorServiceImpl implements DoctorService {
         }
         //更新操作
         for (int i = 0; i < sourceSchedulingList.size(); i++) {
-            scheduleMapper.copyOneDay(String.valueOf(targetWeekDates.get(i)), sourceSchedulingList.get(i), BaseContext.getCurrentId());
+            if (patientDoctorSchedulings.get(i) == null) {
+                scheduleMapper.copyOneDay(String.valueOf(targetWeekDates.get(i)), sourceSchedulingList.get(i), BaseContext.getCurrentId());
+            }
         }
     }
 
@@ -382,7 +397,19 @@ public class DoctorServiceImpl implements DoctorService {
      * 排班复制-月复制
      */
     public void copyScheduleMonth(ScheduleCopy_month scheduleCopyMonth) {
-        int sourceMonth = Integer.parseInt(scheduleCopyMonth.getSourMonthNumber().substring(6, 9));
+        //获得算上今天一共七天的日期
+        ArrayList<String> futureDaysList = DataUtils.futureDaysList(7);
+        List<Patient_Doctor_Scheduling> patientDoctorSchedulings = new LinkedList<>();
+        for (String onlineDate : futureDaysList) {
+                patientDoctorSchedulings.add(scheduleMapper.selectPatientDoctorSchedulingByIdAndDate(BaseContext.getCurrentId(), java.sql.Date.valueOf(onlineDate)));
+        }
+        if (patientDoctorSchedulings.stream()
+                .filter(Objects::nonNull)
+                .count() == 7) {
+            throw new UpdateFailedException(MessageConstant.DELETE_FAILED_DOCTOR);
+        }
+
+        int sourceMonth = Integer.parseInt(scheduleCopyMonth.getSourMonthNumber().substring(5,7));
         int year = Integer.parseInt(DataUtils.getYear(new Date()));
         List<LocalDate> sourceDates = DataUtils.getMonthDates(year, sourceMonth);
         List<Doctor_Scheduling> sourceSchedulingList = new LinkedList<>();
@@ -391,10 +418,18 @@ public class DoctorServiceImpl implements DoctorService {
             sourceSchedulingList.add(scheduling);
         }
 
-        int targetMonth = Integer.parseInt(scheduleCopyMonth.getTargetMonthNumber().substring(6, 9));
+        int targetMonth = Integer.parseInt(scheduleCopyMonth.getTargetMonthNumber().substring(5, 7));
         List<LocalDate> targetDates = DataUtils.getMonthDates(year, targetMonth);
-        for (int i = 0; i < sourceSchedulingList.size(); i++) {
-            scheduleMapper.copyOneDay(String.valueOf(targetDates.get(i)), sourceSchedulingList.get(i), BaseContext.getCurrentId());
+        for (int i = 0; i < (Math.min(targetDates.size(), sourceSchedulingList.size())); i++) {
+            if (targetDates.get(i).equals(LocalDate.now())) {
+                for (int j = 0; j < 7; j++) {
+                    if (patientDoctorSchedulings.get(j) == null) {
+                        scheduleMapper.copyOneDay(String.valueOf(targetDates.get(i + j)), sourceSchedulingList.get(i + j), BaseContext.getCurrentId());
+                    }
+                }
+            } else {
+                scheduleMapper.copyOneDay(String.valueOf(targetDates.get(i)), sourceSchedulingList.get(i), BaseContext.getCurrentId());
+            }
         }
     }
 
@@ -402,10 +437,32 @@ public class DoctorServiceImpl implements DoctorService {
      * 排班复制-日复制
      */
     public void copyScheduleDay(ScheduleCopy_day scheduleCopyDay) {
+        //检查是否已放号
+        Patient_Doctor_Scheduling patientDoctorScheduling = scheduleMapper.selectPatientDoctorSchedulingByIdAndDate(BaseContext.getCurrentId(), java.sql.Date.valueOf(scheduleCopyDay.getTargetDay()));
+        if (patientDoctorScheduling != null) {
+            throw new UpdateFailedException(MessageConstant.DELETE_FAILED_DOCTOR);
+        }
+
         Doctor_Scheduling sourceSchedule = scheduleMapper.selectByDoctorIdAndDate(BaseContext.getCurrentId(), scheduleCopyDay.getSourDay());
 
         scheduleMapper.copyOneDay(scheduleCopyDay.getTargetDay(), sourceSchedule, BaseContext.getCurrentId());
 
+    }
+
+    /**
+     * 提前放号
+     */
+    public void deliverRegistration() {
+        //获得算上今天一共七天的日期
+        ArrayList<String> futureDaysList = DataUtils.futureDaysList(7);
+
+
+        for (String date : futureDaysList) {
+            Doctor_Scheduling doctorScheduling = scheduleMapper.selectByDoctorIdAndDate(BaseContext.getCurrentId(), date);
+            //再更新患者挂号界面
+            scheduleMapper.updatePatientDoctorScheduling(doctorScheduling.getDoctorId(), doctorScheduling.getData(), doctorScheduling.getRegistrationTypeIds());
+
+        }
     }
 
 
