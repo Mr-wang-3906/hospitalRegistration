@@ -1,12 +1,10 @@
 package hospital.controller.patient;
 
-import hospital.constant.MessageConstant;
 import hospital.context.BaseContext;
 import hospital.dto.PatientCheckRegistrationDTO;
 import hospital.dto.PatientRegisterDTO;
 import hospital.entity.Doctor;
 import hospital.entity.Patient_Doctor_Scheduling;
-import hospital.entity.RegistrationType;
 import hospital.temp.Orders;
 import hospital.temp.PatientInfo;
 import hospital.result.Result;
@@ -95,6 +93,16 @@ public class PatientController {
     @PostMapping("/pay")
     @ApiOperation(value = "付款")
     public Result pay(){
+        return Result.success();
+    }
+
+    /**
+     * 取消预约
+     */
+    @PostMapping("/cancelPayment")
+    @ApiOperation("取消预约")
+    public Result cancelPayment(@RequestBody Orders orders){
+        patientService.cancelPayment(orders);
         return Result.success();
     }
 }

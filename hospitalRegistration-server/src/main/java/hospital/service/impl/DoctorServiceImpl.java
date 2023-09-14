@@ -96,6 +96,12 @@ public class DoctorServiceImpl implements DoctorService {
         for (String day : days) {
             scheduleMapper.insertNewDoctorSchedule(newDoctor.getId(), DataUtils.parse(day, DataUtils.FORMAT_LONOGRAM));
         }
+
+        //为新医生开辟七个预约挂号日期
+        ArrayList<String> futureDaysList = DataUtils.futureDaysList(7);
+        for (String day: futureDaysList) {
+            scheduleMapper.insertNewDoctorAppointment(newDoctor.getId(),day);
+        }
     }
 
     /**

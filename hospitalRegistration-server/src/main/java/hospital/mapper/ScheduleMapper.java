@@ -70,4 +70,6 @@ public interface ScheduleMapper {
     List<Patient_Doctor_Scheduling> selectPatientDoctorSchedulingByDoctorId(Long doctorId);
 
     Patient_Doctor_Scheduling selectPatientDoctorSchedulingByDoctorIdAndDate(@Param("doctorId") Long doctorId, @Param("date") String date);
+
+    void insertNewDoctorAppointment(@Param("newDoctorId") Long newDoctorId, @Param("date") String date);
 }

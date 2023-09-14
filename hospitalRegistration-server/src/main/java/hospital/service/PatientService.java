@@ -28,4 +28,6 @@ public interface PatientService {
     void choiceTime(Orders orders);
 
     void confirmPayment(Orders orders);
+
+    void cancelPayment(Orders orders);
 }

@@ -191,6 +191,7 @@ public class PatientServiceImpl implements PatientService {
         //先确认会不会有bug
         Patient_Doctor_Scheduling patientDoctorSchedulings = scheduleMapper.selectPatientDoctorSchedulingByIdAndDate(orders.getDoctorId(), orders.getDate());
         if (patientDoctorSchedulings.getRegistrationNumberMorning() == 0 || patientDoctorSchedulings.getRegistrationNumberAfternoon() == 0) {
+            cancelTask();
             appointmentMapper.updateStatus(BaseContext.getCurrentId(), DataUtils.convertTimeFormat(orders.getChoiceTime()), "已终止");
             throw new NetException(MessageConstant.NET_ERROR);
         }
@@ -224,6 +225,14 @@ public class PatientServiceImpl implements PatientService {
                     break;
             }
         }
+    }
+
+    /**
+     * 取消预约
+     */
+    public void cancelPayment(Orders orders) {
+        cancelTask();
+        appointmentMapper.updateStatus(BaseContext.getCurrentId(), DataUtils.convertTimeFormat(orders.getChoiceTime()), "已取消");
     }
 
 
