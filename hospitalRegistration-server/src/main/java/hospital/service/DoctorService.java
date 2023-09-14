@@ -1,6 +1,7 @@
 package hospital.service;
 
 import hospital.dto.*;
+import hospital.entity.AppointmentRecords;
 import hospital.entity.Doctor;
 import hospital.entity.RegistrationType;
 import hospital.temp.DoctorInfo;
@@ -56,4 +57,6 @@ public interface DoctorService {
     List<PatientAppointmentInfo> registrationCheck(String date);
 
     void setPatientCredit(PatientAppointmentInfoDTO patientAppointmentInfoDTO);
+
+    List<AppointmentRecords> queryPatientAppointment(Long patientId);
 }

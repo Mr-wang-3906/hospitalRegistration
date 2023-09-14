@@ -20,7 +20,7 @@ public interface DoctorMapper {
 
     void updateOneDaySchedule(@Param("doctorScheduling") Doctor_Scheduling doctorScheduling, @Param("data")String data);
 
-    Doctor selectByIdAndSection(@Param("doctorId") Long doctor, @Param("section") String section);
+    List<Doctor> selectByIdAndSection(@Param("doctorId") Long doctor, @Param("section") String section);
 
     List<Doctor> selectAll();
 }

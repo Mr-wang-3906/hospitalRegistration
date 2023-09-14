@@ -29,4 +29,10 @@ public class PatientAppointmentInfo {
 
     //预约时间
     private String AppointmentNumber;
+
+    //挂号类型-名称
+    private String registrationName;
+
+    //挂号状态
+    private String AppointmentStatus;
 }

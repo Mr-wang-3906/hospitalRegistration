@@ -2,16 +2,18 @@ package hospital.temp;
 
 import lombok.Data;
 
-import java.sql.Date;
 
 @Data
 public class Orders {
 
     //订单的那一天
-    private Date date;
+    private String date;
 
     //医生id
     private Long doctorId;
+
+    //选择的科室
+    private String section;
 
     //选择的挂号种类id
     private Long registrationTypeId;

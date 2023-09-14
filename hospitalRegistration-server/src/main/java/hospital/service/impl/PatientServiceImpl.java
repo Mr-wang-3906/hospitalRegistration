@@ -25,6 +25,7 @@ import org.springframework.util.DigestUtils;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import javax.sql.DataSource;
+import java.sql.Date;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -140,10 +141,10 @@ public class PatientServiceImpl implements PatientService {
         if (patientDoctorSchedulings.size() > 0) {
             for (Patient_Doctor_Scheduling patientDoctorScheduling : patientDoctorSchedulings) {
                 Long doctorId = patientDoctorScheduling.getDoctorId();
-                doctors.add(doctorMapper.selectByIdAndSection(doctorId, patientCheckRegistrationDTO.getSection()));
+                doctors.addAll(doctorMapper.selectByIdAndSection(doctorId, patientCheckRegistrationDTO.getSection()));
             }
         } else {
-            doctors.add(doctorMapper.selectByIdAndSection(null, patientCheckRegistrationDTO.getSection()));
+            doctors.addAll(doctorMapper.selectByIdAndSection(null, patientCheckRegistrationDTO.getSection()));
         }
         return doctors;
     }
@@ -163,13 +164,36 @@ public class PatientServiceImpl implements PatientService {
         /* 先设置订单状态,只有付款了才会更新挂号界面 */
         Doctor doctor = doctorMapper.selectById(orders.getDoctorId());
         //先设置历史订单-待支付
-        appointmentMapper.setStatusOngoing(patientId, DataUtils.convertTimeFormat(orders.getChoiceTime()), doctor.getName(), "待支付");
+        int num1 = Integer.parseInt(orders.getChoiceTime().substring(0, 1));
+        if (num1 == 9 || num1 == 0) {
+            orders.setChoiceTime(orders.getDate() + " 9:00-10:00");
+        } else {
+            int num2 = Integer.parseInt(orders.getChoiceTime().substring(0, 2));
+            switch (num2) {
+                case 10:
+                    orders.setChoiceTime(orders.getDate() + " 10:00-11:00");
+                    break;
+                case 11:
+                    orders.setChoiceTime(orders.getDate() + " 11:00-12:00");
+                    break;
+                case 14:
+                    orders.setChoiceTime(orders.getDate() + " 14:00-15:00");
+                    break;
+                case 15:
+                    orders.setChoiceTime(orders.getDate() + " 15:00-16:00");
+                    break;
+                case 16:
+                    orders.setChoiceTime(orders.getDate() + " 16:00-17:00");
+                    break;
+            }
+        }
+        appointmentMapper.setStatusOngoing(patientId, orders, doctor.getName(), "unpaid");
 
         //设置定时任务:
         // 定义任务
         Runnable task = () -> {
             // 将待支付改为已取消
-            appointmentMapper.updateStatus(patientId, DataUtils.convertTimeFormat(orders.getChoiceTime()), "已取消");
+            appointmentMapper.updateStatus(patientId, orders.getChoiceTime(), "canceled");
         };
 
         scheduledFuture = executorService.schedule(task, 15, TimeUnit.MINUTES);
@@ -188,22 +212,46 @@ public class PatientServiceImpl implements PatientService {
      * 确认付款
      */
     public void confirmPayment(Orders orders) {
+        int num1 = Integer.parseInt(orders.getChoiceTime().substring(0, 1));
+        if (num1 == 9 || num1 == 0) {
+            orders.setChoiceTime(orders.getDate() + " 9:00-10:00");
+        } else {
+            int num2 = Integer.parseInt(orders.getChoiceTime().substring(0, 2));
+            switch (num2) {
+                case 10:
+                    orders.setChoiceTime(orders.getDate() + " 10:00-11:00");
+                    break;
+                case 11:
+                    orders.setChoiceTime(orders.getDate() + " 11:00-12:00");
+                    break;
+                case 14:
+                    orders.setChoiceTime(orders.getDate() + " 14:00-15:00");
+                    break;
+                case 15:
+                    orders.setChoiceTime(orders.getDate() + " 15:00-16:00");
+                    break;
+                case 16:
+                    orders.setChoiceTime(orders.getDate() + " 16:00-17:00");
+                    break;
+            }
+        }
         //先确认会不会有bug
-        Patient_Doctor_Scheduling patientDoctorSchedulings = scheduleMapper.selectPatientDoctorSchedulingByIdAndDate(orders.getDoctorId(), orders.getDate());
+        Patient_Doctor_Scheduling patientDoctorSchedulings = scheduleMapper.selectPatientDoctorSchedulingByIdAndDate(orders.getDoctorId(), Date.valueOf(orders.getDate()));
         if (patientDoctorSchedulings.getRegistrationNumberMorning() == 0 || patientDoctorSchedulings.getRegistrationNumberAfternoon() == 0) {
             cancelTask();
-            appointmentMapper.updateStatus(BaseContext.getCurrentId(), DataUtils.convertTimeFormat(orders.getChoiceTime()), "已终止");
+            appointmentMapper.updateStatus(BaseContext.getCurrentId(), orders.getChoiceTime(), "stopped");
             throw new NetException(MessageConstant.NET_ERROR);
         }
         //先取消之前的定时任务
         cancelTask();
         //再更新挂号界面
-        int num1 = Integer.parseInt(orders.getChoiceTime().substring(0, 1));
+
         RegistrationType registrationTypes = registrationMapper.selectById(orders.getRegistrationTypeId());
 
         //然后更新历史订单
-        appointmentMapper.updateStatus(BaseContext.getCurrentId(), DataUtils.convertTimeFormat(orders.getChoiceTime()), "已预约");
-        if (num1 == 9) {
+        appointmentMapper.updateStatus(BaseContext.getCurrentId(), orders.getChoiceTime(), "waiting");
+        int num3 = Integer.parseInt(orders.getChoiceTime().substring(0, 1));
+        if (num3 == 9 || num3 == 0) {
             scheduleMapper.updateConfirmPaymentNine(orders, registrationTypes.getEstimatedTime());
         } else {
             int num2 = Integer.parseInt(orders.getChoiceTime().substring(0, 2));
@@ -232,8 +280,30 @@ public class PatientServiceImpl implements PatientService {
      */
     public void cancelPayment(Orders orders) {
         cancelTask();
-        appointmentMapper.updateStatus(BaseContext.getCurrentId(), DataUtils.convertTimeFormat(orders.getChoiceTime()), "已取消");
+        int num1 = Integer.parseInt(orders.getChoiceTime().substring(0, 1));
+        if (num1 == 9 || num1 == 0) {
+            orders.setChoiceTime(orders.getDate() + " 9:00-10:00");
+        } else {
+            int num2 = Integer.parseInt(orders.getChoiceTime().substring(0, 2));
+            switch (num2) {
+                case 10:
+                    orders.setChoiceTime(orders.getDate() + " 10:00-11:00");
+                    break;
+                case 11:
+                    orders.setChoiceTime(orders.getDate() + " 11:00-12:00");
+                    break;
+                case 14:
+                    orders.setChoiceTime(orders.getDate() + " 14:00-15:00");
+                    break;
+                case 15:
+                    orders.setChoiceTime(orders.getDate() + " 15:00-16:00");
+                    break;
+                case 16:
+                    orders.setChoiceTime(orders.getDate() + " 16:00-17:00");
+                    break;
+            }
+        }
+        appointmentMapper.updateStatus(BaseContext.getCurrentId(), orders.getChoiceTime(), "canceled");
+
     }
-
-
 }

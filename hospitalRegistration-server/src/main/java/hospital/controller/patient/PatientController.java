@@ -3,8 +3,11 @@ package hospital.controller.patient;
 import hospital.context.BaseContext;
 import hospital.dto.PatientCheckRegistrationDTO;
 import hospital.dto.PatientRegisterDTO;
+import hospital.entity.AppointmentRecords;
 import hospital.entity.Doctor;
 import hospital.entity.Patient_Doctor_Scheduling;
+import hospital.mapper.DoctorMapper;
+import hospital.service.DoctorService;
 import hospital.temp.Orders;
 import hospital.temp.PatientInfo;
 import hospital.result.Result;
@@ -26,6 +29,9 @@ public class PatientController {
 
     @Autowired
     private PatientService patientService;
+
+    @Autowired
+    private DoctorService doctorService;
 
     /**
      * 患者注册
@@ -104,5 +110,15 @@ public class PatientController {
     public Result cancelPayment(@RequestBody Orders orders){
         patientService.cancelPayment(orders);
         return Result.success();
+    }
+
+    /**
+     * 查询历史预约信息
+     */
+    @GetMapping("/query/patient/appointment")
+    @ApiOperation(value = "查询患者历史预约信息")
+    public Result<List<AppointmentRecords>> queryPatientAppointment(){
+        List<AppointmentRecords> appointmentRecordsList = doctorService.queryPatientAppointment(BaseContext.getCurrentId());
+        return Result.success(appointmentRecordsList);
     }
 }

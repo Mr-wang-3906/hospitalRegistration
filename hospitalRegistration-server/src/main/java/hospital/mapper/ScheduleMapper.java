@@ -72,4 +72,6 @@ public interface ScheduleMapper {
     Patient_Doctor_Scheduling selectPatientDoctorSchedulingByDoctorIdAndDate(@Param("doctorId") Long doctorId, @Param("date") String date);
 
     void insertNewDoctorAppointment(@Param("newDoctorId") Long newDoctorId, @Param("date") String date);
+
+    void updatePatientDoctorScheduling2(@Param("doctorScheduling") Doctor_Scheduling doctorScheduling);
 }

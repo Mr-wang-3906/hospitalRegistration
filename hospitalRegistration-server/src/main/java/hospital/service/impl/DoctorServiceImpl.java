@@ -506,13 +506,10 @@ public class DoctorServiceImpl implements DoctorService {
     public void deliverRegistration() {
         //获得算上今天一共七天的日期
         ArrayList<String> futureDaysList = DataUtils.futureDaysList(7);
-
-
         for (String date : futureDaysList) {
             Doctor_Scheduling doctorScheduling = scheduleMapper.selectByDoctorIdAndDate(BaseContext.getCurrentId(), date);
             //再更新患者挂号界面
-            scheduleMapper.updatePatientDoctorScheduling(doctorScheduling.getDoctorId(), doctorScheduling.getData(), doctorScheduling.getRegistrationTypeIds());
-
+            scheduleMapper.updatePatientDoctorScheduling2(doctorScheduling);
         }
     }
 
@@ -541,6 +538,9 @@ public class DoctorServiceImpl implements DoctorService {
                     PatientAppointmentInfo patientAppointmentInfo = new PatientAppointmentInfo();
                     BeanUtils.copyProperties(patient, patientAppointmentInfo);
                     patientAppointmentInfo.setAppointmentNumber(appointmentRecord.getRegistrationTime());
+                    patientAppointmentInfo.setAppointmentStatus(appointmentRecord.getRegistrationStatus());
+                    RegistrationType registrationType = registrationMapper.selectById(appointmentRecord.getRegistrationTypeId());
+                    patientAppointmentInfo.setRegistrationName(registrationType.getRegistrationName());
                     patients.add(patientAppointmentInfo);
                 }
             }
@@ -553,11 +553,18 @@ public class DoctorServiceImpl implements DoctorService {
      */
     public void setPatientCredit(PatientAppointmentInfoDTO patientAppointmentInfoDTO) {
         Doctor doctor = doctorMapper.selectById(BaseContext.getCurrentId());
-        if (patientAppointmentInfoDTO.getStatus().equals("已完成")) {
-            appointmentMapper.setStatusFinashed(doctor.getName(), patientAppointmentInfoDTO);
+        if (patientAppointmentInfoDTO.getStatus().equals("waiting")) {
+            appointmentMapper.setStatusFinashed(doctor.getName(), patientAppointmentInfoDTO,"visited");
         } else {
-            appointmentMapper.setStatusFinashed(doctor.getName(), patientAppointmentInfoDTO);
+            appointmentMapper.setStatusFinashed(doctor.getName(), patientAppointmentInfoDTO, "noVisited");
         }
+    }
+
+    /**
+     * 查看患者历史预约信息
+     */
+    public List<AppointmentRecords> queryPatientAppointment(Long patientId) {
+        return appointmentMapper.selectByPatientId(patientId);
     }
 
 

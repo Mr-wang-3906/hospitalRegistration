@@ -2,6 +2,7 @@ package hospital.controller.doctor;
 
 import hospital.context.BaseContext;
 import hospital.dto.*;
+import hospital.entity.AppointmentRecords;
 import hospital.entity.Patient;
 import hospital.entity.RegistrationType;
 import hospital.result.Result;
@@ -240,5 +241,15 @@ public class DoctorController {
     public Result setPatientCredit(@RequestBody PatientAppointmentInfoDTO patientAppointmentInfoDTO){
         doctorService.setPatientCredit(patientAppointmentInfoDTO);
         return Result.success();
+    }
+
+    /**
+     * 查询患者历史预约信息
+     */
+    @GetMapping("/query/patient/appointment/{patientId}")
+    @ApiOperation(value = "查询患者历史预约信息")
+    public Result<List<AppointmentRecords>> queryPatientAppointment(@PathVariable Long patientId){
+        List<AppointmentRecords> appointmentRecordsList = doctorService.queryPatientAppointment(patientId);
+        return Result.success(appointmentRecordsList);
     }
 }

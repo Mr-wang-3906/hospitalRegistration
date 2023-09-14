@@ -14,6 +14,9 @@ public class PatientAppointmentInfoDTO {
     //预约时间
     private String registrationTime;
 
+    //科室
+    private String section;
+
     //完成or失约
     private String status;
 }

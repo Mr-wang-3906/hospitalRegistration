@@ -9,6 +9,10 @@ public class AppointmentRecords {
 
     private String registrationTime;
 
+    private String section;
+
+    private Long registrationTypeId;
+
     private String doctorName;
 
     private String registrationStatus;
