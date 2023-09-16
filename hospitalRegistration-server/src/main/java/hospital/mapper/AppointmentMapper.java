@@ -1,6 +1,6 @@
 package hospital.mapper;
 
-import hospital.dto.PatientAppointmentInfoDTO;
+import hospital.dto.PatientAppointment_PatientInfoDTO;
 import hospital.entity.AppointmentRecords;
 import hospital.temp.Orders;
 import org.apache.ibatis.annotations.Mapper;
@@ -19,7 +19,7 @@ public interface AppointmentMapper {
 
     int countNo_ShowNumber(Long patientId);
 
-    void setStatusFinashed(@Param("name") String name, @Param("p") PatientAppointmentInfoDTO patientAppointmentInfoDTO, @Param("status") String status);
+    void setStatusFinashed(@Param("patientAppointmentInfoDTO") PatientAppointment_PatientInfoDTO patientAppointmentInfoDTO);
 
     List<AppointmentRecords> selectByPatientId(Long patientId);
 }

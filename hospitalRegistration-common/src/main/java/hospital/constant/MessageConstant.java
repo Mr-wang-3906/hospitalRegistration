@@ -11,8 +11,8 @@ public class MessageConstant {
     public static final String ACCOUNT_ALREADY_EXISTS = "该用户名已存在";
     public static final String UNKNOWN_ERROR = "未知错误";
     public static final String USER_NOT_LOGIN = "用户未登录或登录过期,即将跳转至登录界面";
-    public static final String LOGIN_FAILED = "登录失败";
-    public static final String PASSWORD_EDIT_FAILED = "密码修改失败";
+    public static final String PIC_IS_EMPTY = "图片数据为空";
+    public static final String PASSWORD_EDIT_FAILED = "旧密码错误";
     public static final String ALREADY_EXISTS = "已存在";
     public static final String SEND_EMAIL_FAILED = "发送失败,服务器繁忙";
     public static final String REGISTER_FAILED = "验证码错误";

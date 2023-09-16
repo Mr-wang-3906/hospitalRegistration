@@ -4,6 +4,7 @@ import hospital.context.BaseContext;
 import hospital.dto.*;
 import hospital.entity.AppointmentRecords;
 
+import hospital.entity.Doctor;
 import hospital.entity.RegistrationType;
 import hospital.result.Result;
 import hospital.service.DoctorService;
@@ -255,9 +256,9 @@ public class DoctorController {
     /**
      * 查看某日每时段的挂号状态
      */
-    @GetMapping("/registration/check/{date}")
+    @GetMapping("/registration/check")
     @ApiOperation("查看某日每时段的挂号状态")
-    public Result<List<PatientAppointmentInfo>> doctorRegistrationCheck(@PathVariable String date){
+    public Result<List<PatientAppointmentInfo>> doctorRegistrationCheck(@RequestParam String date){
         List<PatientAppointmentInfo> patients = doctorService.registrationCheck(date);
         return Result.success(patients);
     }
@@ -267,7 +268,7 @@ public class DoctorController {
      */
     @PostMapping("/setPatientCredit")
     @ApiOperation("设置患者是否失约")
-    public Result setPatientCredit(@RequestBody PatientAppointmentInfoDTO patientAppointmentInfoDTO){
+    public Result setPatientCredit(@RequestBody PatientAppointment_PatientInfoDTO patientAppointmentInfoDTO){
         doctorService.setPatientCredit(patientAppointmentInfoDTO);
         return Result.success();
     }
@@ -280,6 +281,16 @@ public class DoctorController {
     public Result<List<AppointmentRecords>> queryPatientAppointment(@PathVariable Long patientId){
         List<AppointmentRecords> appointmentRecordsList = doctorService.queryPatientAppointment(patientId);
         return Result.success(appointmentRecordsList);
+    }
+
+    /**
+     * 修改密码
+     */
+    @PostMapping("/updatePassword")
+    @ApiOperation(value = "医生修改密码")
+    public Result doctorUpdatePassword(@RequestBody UpdatePasswordDTO updatePasswordDTO){
+        doctorService.updatePassword(updatePasswordDTO);
+        return Result.success();
     }
 
     private void cleanCache() {

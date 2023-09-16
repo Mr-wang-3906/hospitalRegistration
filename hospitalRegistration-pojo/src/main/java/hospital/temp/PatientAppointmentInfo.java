@@ -1,38 +1,21 @@
 package hospital.temp;
 
+import hospital.vo.PatientAppiontmentPationInfo;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class PatientAppointmentInfo {
-    //id
-    private Long id;
-
-    //用户名
-    private String userName;
-
-    //姓名
-    private String name;
-
-    //年龄
-    private String age;
-
-    //性别
-    private String gender;
-
-    //失约次数
-    private Integer NoShowNumber;
 
     //预约时间
     private String AppointmentNumber;
 
-    //挂号类型-名称
-    private String registrationName;
-
-    //挂号状态
-    private String AppointmentStatus;
+    //患者信息
+    private List<PatientAppiontmentPationInfo> patientAppiontmentPationInfos;
 }

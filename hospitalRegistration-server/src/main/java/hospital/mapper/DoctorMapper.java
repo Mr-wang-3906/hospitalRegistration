@@ -23,4 +23,6 @@ public interface DoctorMapper {
     List<Doctor> selectByIdAndSection(@Param("doctorId") Long doctor, @Param("section") String section);
 
     List<Doctor> selectAll();
+
+    void updatePassword(@Param("doctorId") Long doctorId, @Param("newPassword") String newPassword);
 }

@@ -6,6 +6,7 @@ import hospital.mapper.DoctorMapper;
 import hospital.mapper.ScheduleMapper;
 import hospital.utils.DataUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +14,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 定时任务类
@@ -20,6 +22,9 @@ import java.util.List;
  */
 @Component
 public class Tasks {
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     @Autowired
     private ScheduleMapper scheduleMapper;
@@ -55,6 +60,7 @@ public class Tasks {
      **/
     @Scheduled(cron = "0 0 0 1 * ?")
     public void executeTask2() {
+        cleanCache();
         //先获得前一个月的月份
         LocalDate currentDate = LocalDate.now();
         LocalDate previousMonth = currentDate.minusMonths(1);
@@ -72,5 +78,11 @@ public class Tasks {
             }
         }
 
+    }
+
+    private void cleanCache() {
+        //清除所有缓存
+        Set keys = redisTemplate.keys("*doctor_scheduling_*");
+        redisTemplate.delete(keys);
     }
 }

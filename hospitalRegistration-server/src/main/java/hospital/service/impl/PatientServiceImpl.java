@@ -16,13 +16,13 @@ import hospital.temp.PatientInfo;
 import hospital.exception.PasswordErrorException;
 import hospital.exception.RegisterFailedException;
 import hospital.service.PatientService;
+import hospital.vo.Patient_Doctor_SchedulingVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
-import javax.servlet.http.HttpServletRequest;
 import java.sql.Date;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -88,7 +88,7 @@ public class PatientServiceImpl implements PatientService {
     /**
      * 患者注册
      */
-    public void insertNewPatient(PatientRegisterDTO patientRegisterDTO, HttpServletRequest httpServletRequest) {
+    public void insertNewPatient(PatientRegisterDTO patientRegisterDTO) {
         String redisKey = "email_" + patientRegisterDTO.getEmailAddress();
 
         // 检查Redis中是否存在指定的键
@@ -155,8 +155,23 @@ public class PatientServiceImpl implements PatientService {
     /**
      * 选择医生
      */
-    public List<Patient_Doctor_Scheduling> choiceDoctor(Long doctorId) {
-        return scheduleMapper.selectPatientDoctorSchedulingByDoctorId(doctorId);
+    public List<Patient_Doctor_SchedulingVO> choiceDoctor(Long doctorId) {
+        List<Patient_Doctor_Scheduling> patientDoctorSchedulings = scheduleMapper.selectPatientDoctorSchedulingByDoctorId(doctorId);
+        List<Patient_Doctor_SchedulingVO> patientDoctorSchedulingVOs = new LinkedList<>();
+        for (Patient_Doctor_Scheduling patientDoctorScheduling: patientDoctorSchedulings) {
+            Patient_Doctor_SchedulingVO patientDoctorSchedulingVO = new Patient_Doctor_SchedulingVO();
+            BeanUtils.copyProperties(patientDoctorScheduling, patientDoctorSchedulingVO);
+            String registrationTypeId = patientDoctorScheduling.getRegistrationTypeId();
+            String[] registrationTypeIds = registrationTypeId.split(",");
+            List<RegistrationType> registrationTypes = new LinkedList<>();
+            for (String typeId: registrationTypeIds) {
+                RegistrationType registrationType = registrationMapper.selectById(Long.valueOf(typeId));
+                registrationTypes.add(registrationType);
+            }
+            patientDoctorSchedulingVO.setRegistrationTypes(registrationTypes);
+            patientDoctorSchedulingVOs.add(patientDoctorSchedulingVO);
+        }
+        return patientDoctorSchedulingVOs;
     }
 
     /**
@@ -215,6 +230,7 @@ public class PatientServiceImpl implements PatientService {
      * 确认付款
      */
     public void confirmPayment(Orders orders) {
+        String time = orders.getChoiceTime();
         int num1 = Integer.parseInt(orders.getChoiceTime().substring(0, 1));
         if (num1 == 9 || num1 == 0) {
             orders.setChoiceTime(orders.getDate() + " 9:00-10:00");
@@ -253,11 +269,11 @@ public class PatientServiceImpl implements PatientService {
 
         //然后更新历史订单
         appointmentMapper.updateStatus(BaseContext.getCurrentId(), orders.getChoiceTime(), "waiting");
-        int num3 = Integer.parseInt(orders.getChoiceTime().substring(0, 1));
+        int num3 = Integer.parseInt(time.substring(0, 1));
         if (num3 == 9 || num3 == 0) {
             scheduleMapper.updateConfirmPaymentNine(orders, registrationTypes.getEstimatedTime());
         } else {
-            int num2 = Integer.parseInt(orders.getChoiceTime().substring(0, 2));
+            int num2 = Integer.parseInt(time.substring(0, 2));
             switch (num2) {
                 case 10:
                     scheduleMapper.updateConfirmPaymentTen(orders, registrationTypes.getEstimatedTime());

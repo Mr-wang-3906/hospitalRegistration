@@ -56,7 +56,9 @@ public interface DoctorService {
 
     List<PatientAppointmentInfo> registrationCheck(String date);
 
-    void setPatientCredit(PatientAppointmentInfoDTO patientAppointmentInfoDTO);
+    void setPatientCredit(PatientAppointment_PatientInfoDTO patientAppointmentInfoDTO);
 
     List<AppointmentRecords> queryPatientAppointment(Long patientId);
+
+    void updatePassword(UpdatePasswordDTO updatePasswordDTO);
 }

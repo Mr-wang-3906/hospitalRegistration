@@ -5,25 +5,24 @@ import hospital.dto.PatientCheckRegistrationDTO;
 import hospital.dto.PatientRegisterDTO;
 import hospital.entity.Doctor;
 import hospital.entity.Patient;
-import hospital.entity.Patient_Doctor_Scheduling;
 import hospital.temp.Orders;
 import hospital.temp.PatientInfo;
+import hospital.vo.Patient_Doctor_SchedulingVO;
 
 
-import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
 public interface PatientService {
 
     Patient login(LoginDTO loginDTO);
 
-    void insertNewPatient(PatientRegisterDTO patientRegisterDTO, HttpServletRequest httpServletRequest);
+    void insertNewPatient(PatientRegisterDTO patientRegisterDTO);
 
     PatientInfo queryInfo(Long patientId);
 
     List<Doctor> checkRegistration(PatientCheckRegistrationDTO patientCheckRegistrationDTO);
 
-    List<Patient_Doctor_Scheduling> choiceDoctor(Long doctor);
+    List<Patient_Doctor_SchedulingVO> choiceDoctor(Long doctor);
 
     void choiceTime(Orders orders);
 

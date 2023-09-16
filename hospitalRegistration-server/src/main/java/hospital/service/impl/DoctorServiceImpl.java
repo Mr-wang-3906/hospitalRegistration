@@ -12,6 +12,7 @@ import hospital.temp.Doctor_SchedulingTemp;
 import hospital.temp.PatientAppointmentInfo;
 import hospital.utils.DataUtils;
 import hospital.vo.Doctor_SchedulingVO;
+import hospital.vo.PatientAppiontmentPationInfo;
 import hospital.vo.ScheduleTemplateVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -282,19 +283,18 @@ public class DoctorServiceImpl implements DoctorService {
             if (doctorScheduling.getRegistrationTypeIds() != null) {
                 //再来处理registrationType连表
                 String[] registrationTypeIds = doctorScheduling.getRegistrationTypeIds().split(",");
-                List<RegistrationType> registrationTypes = new ArrayList<>();
+                ArrayList<RegistrationType> registrationTypes = new ArrayList<>();
                 for (String registrationTypeId : registrationTypeIds) {
                     if (!registrationTypeId.equals("null")) {
-                        if (registrationTypes != null) {
+                        if (registrationMapper.selectById(Long.valueOf(registrationTypeId)) != null) {
                             registrationTypes.add(registrationMapper.selectById(Long.valueOf(registrationTypeId)));
                         }
-                    } else {
-                        registrationTypes = null;
                     }
                 }
-                doctorSchedulingVO.setRegistrationTypes((ArrayList<RegistrationType>) registrationTypes);
+                doctorSchedulingVO.setRegistrationTypes(registrationTypes);
                 doctorSchedulingVOS.add(doctorSchedulingVO);
             } else {
+                doctorSchedulingVO.setRegistrationTypes(new ArrayList<RegistrationType>());
                 doctorSchedulingVOS.add(doctorSchedulingVO);
             }
         }
@@ -342,15 +342,18 @@ public class DoctorServiceImpl implements DoctorService {
         }
         doctorSchedulingTemp.setDoctorId(BaseContext.getCurrentId());
         ArrayList<String> futureDaysList = DataUtils.futureDaysList(7);
-        for (String onlineDay : futureDaysList) {
-            if (doctorSchedulingTemp.getData().equals(onlineDay)) {
-                throw new UpdateFailedException(MessageConstant.DELETE_FAILED_DOCTOR);
+        for (String date : futureDaysList) {
+            if (Objects.equals(date, doctorSchedulingTemp.getData())) {
+                Patient_Doctor_Scheduling patientDoctorScheduling = scheduleMapper.selectPatientDoctorSchedulingByDoctorIdAndDate(BaseContext.getCurrentId(), doctorSchedulingTemp.getData());
+                if (!(patientDoctorScheduling.getRegistrationTypeId() == null)) {
+                    throw new DateException(MessageConstant.DELETE_FAILED_DOCTOR);
+                }
             }
         }
         StringBuilder registrationTypeIds = new StringBuilder();
-        if (doctorSchedulingTemp.getRegistrationType_Ids().size() > 0) {
-            for (Long registrationTypeId : doctorSchedulingTemp.getRegistrationType_Ids()) {
-                registrationTypeIds.append(registrationTypeId);
+        if (doctorSchedulingTemp.getRegistrationTypes().size() > 0) {
+            for (RegistrationType registrationType : doctorSchedulingTemp.getRegistrationTypes()) {
+                registrationTypeIds.append(registrationType.getId());
                 registrationTypeIds.append(",");
             }
             registrationTypeIds.deleteCharAt(registrationTypeIds.length() - 1);
@@ -522,50 +525,135 @@ public class DoctorServiceImpl implements DoctorService {
     }
 
     /**
-     * 查看某天每时段挂号状态
+     * 查看某天六个时段的挂号状态
      */
     public List<PatientAppointmentInfo> registrationCheck(String date) {
-        Patient_Doctor_Scheduling patientDoctorScheduling = scheduleMapper.selectPatientDoctorSchedulingByDoctorIdAndDate(BaseContext.getCurrentId(), date);
-        Doctor_Scheduling doctorScheduling = scheduleMapper.selectByDoctorIdAndDate(BaseContext.getCurrentId(), date);
-        int morningNUm = doctorScheduling.getMorningCheckNumber() - patientDoctorScheduling.getRegistrationNumberMorning();
-        int afternoonNUm = doctorScheduling.getAfternoonCheckNumber() - patientDoctorScheduling.getRegistrationNumberAfternoon();
-        if (morningNUm + afternoonNUm == 0) {
-            return null;
-        } else {
-            List<PatientAppointmentInfo> patients = new LinkedList<>();
-            Doctor doctor = doctorMapper.selectById(BaseContext.getCurrentId());
-            List<AppointmentRecords> appointmentRecordsList = appointmentMapper.selectByDoctorName(doctor.getName());
-            for (AppointmentRecords appointmentRecord : appointmentRecordsList) {
-                // 使用空格进行分割，获取日期部分
-                String dateString = appointmentRecord.getRegistrationTime().split(" ")[0];
-                if (dateString.equals(date)) {
-                    Long patientId = appointmentRecord.getPatientId();
-                    Patient patient = patientMapper.selectById(patientId);
-                    int noShowNumber = appointmentMapper.countNo_ShowNumber(patientId);
-                    patient.setNoShowNumber(noShowNumber);
-                    PatientAppointmentInfo patientAppointmentInfo = new PatientAppointmentInfo();
-                    BeanUtils.copyProperties(patient, patientAppointmentInfo);
-                    patientAppointmentInfo.setAppointmentNumber(appointmentRecord.getRegistrationTime());
-                    patientAppointmentInfo.setAppointmentStatus(appointmentRecord.getRegistrationStatus());
-                    RegistrationType registrationType = registrationMapper.selectById(appointmentRecord.getRegistrationTypeId());
-                    patientAppointmentInfo.setRegistrationName(registrationType.getRegistrationName());
-                    patients.add(patientAppointmentInfo);
+        Doctor doctor = doctorMapper.selectById(BaseContext.getCurrentId());
+        List<PatientAppointmentInfo> patients = new LinkedList<>();
+        PatientAppointmentInfo patients_nine_ten = new PatientAppointmentInfo();
+        PatientAppointmentInfo patients_ten_eleven = new PatientAppointmentInfo();
+        PatientAppointmentInfo patients_eleven_twelve = new PatientAppointmentInfo();
+        PatientAppointmentInfo patients_fourteen_fifteen = new PatientAppointmentInfo();
+        PatientAppointmentInfo patients_fifteen_sixteen = new PatientAppointmentInfo();
+        PatientAppointmentInfo patients_sixteen_seventeen = new PatientAppointmentInfo();
+        String nine_ten = date + " 9:00-10:00";
+        String ten_eleven = date + " 10:00-11:00";
+        String eleven_twelve = date + " 11:00-12:00";
+        String fourteen_fifteen = date + " 14:00-15:00";
+        String fifteen_sixteen = date + " 15:00-16:00";
+        String sixteen_seventeen = date + " 16:00-17:00";
+        List<AppointmentRecords> appointmentRecordsList = appointmentMapper.selectByDoctorName(doctor.getName());
+        List<PatientAppiontmentPationInfo> patientAppiontmentPationInfos_n_t = new LinkedList<>();
+        List<PatientAppiontmentPationInfo> patientAppiontmentPationInfos_t_e = new LinkedList<>();
+        List<PatientAppiontmentPationInfo> patientAppiontmentPationInfos_e_t = new LinkedList<>();
+        List<PatientAppiontmentPationInfo> patientAppiontmentPationInfos_f_f = new LinkedList<>();
+        List<PatientAppiontmentPationInfo> patientAppiontmentPationInfos_f_s = new LinkedList<>();
+        List<PatientAppiontmentPationInfo> patientAppiontmentPationInfos_s_s = new LinkedList<>();
+        patients_nine_ten.setAppointmentNumber(nine_ten);
+        patients_ten_eleven.setAppointmentNumber(ten_eleven);
+        patients_eleven_twelve.setAppointmentNumber(eleven_twelve);
+        patients_fourteen_fifteen.setAppointmentNumber(fourteen_fifteen);
+        patients_fifteen_sixteen.setAppointmentNumber(fifteen_sixteen);
+        patients_sixteen_seventeen.setAppointmentNumber(sixteen_seventeen);
+        for (AppointmentRecords appointmentRecord : appointmentRecordsList) {
+            if (appointmentRecord.getRegistrationTime().equals(nine_ten)) {
+                if (!Objects.equals(appointmentRecord.getRegistrationStatus(), "canceled") && !Objects.equals(appointmentRecord.getRegistrationStatus(), "stopped")) {
+                    PatientAppiontmentPationInfo pationInfo = new PatientAppiontmentPationInfo();
+                    pationInfo.setAppointmentStatus(appointmentRecord.getRegistrationStatus());
+                    Patient patient = patientMapper.selectById(appointmentRecord.getPatientId());
+                    BeanUtils.copyProperties(patient, pationInfo);
+                    pationInfo.setPatientId(patient.getId());
+                    pationInfo.setAppointmentId(appointmentRecord.getId());
+                    pationInfo.setRegistrationName(registrationMapper.selectById(appointmentRecord.getRegistrationTypeId()).getRegistrationName());
+                    pationInfo.setNoShowNumber(patient.getNoShowNumber());
+                    patientAppiontmentPationInfos_n_t.add(pationInfo);
+                }
+            } else if (appointmentRecord.getRegistrationTime().equals(ten_eleven)) {
+                if (!Objects.equals(appointmentRecord.getRegistrationStatus(), "canceled") && !Objects.equals(appointmentRecord.getRegistrationStatus(), "stopped")) {
+                    PatientAppiontmentPationInfo pationInfo = new PatientAppiontmentPationInfo();
+                    pationInfo.setAppointmentStatus(appointmentRecord.getRegistrationStatus());
+                    Patient patient = patientMapper.selectById(appointmentRecord.getPatientId());
+                    BeanUtils.copyProperties(patient, pationInfo);
+                    pationInfo.setPatientId(patient.getId());
+                    pationInfo.setAppointmentId(appointmentRecord.getId());
+                    pationInfo.setRegistrationName(registrationMapper.selectById(appointmentRecord.getRegistrationTypeId()).getRegistrationName());
+                    pationInfo.setNoShowNumber(patient.getNoShowNumber());
+                    patientAppiontmentPationInfos_t_e.add(pationInfo);
+                }
+            } else if (appointmentRecord.getRegistrationTime().equals(eleven_twelve)) {
+                if (!Objects.equals(appointmentRecord.getRegistrationStatus(), "canceled") && !Objects.equals(appointmentRecord.getRegistrationStatus(), "stopped")) {
+                    PatientAppiontmentPationInfo pationInfo = new PatientAppiontmentPationInfo();
+                    pationInfo.setAppointmentStatus(appointmentRecord.getRegistrationStatus());
+                    Patient patient = patientMapper.selectById(appointmentRecord.getPatientId());
+                    BeanUtils.copyProperties(patient, pationInfo);
+                    pationInfo.setPatientId(patient.getId());
+                    pationInfo.setAppointmentId(appointmentRecord.getId());
+                    pationInfo.setRegistrationName(registrationMapper.selectById(appointmentRecord.getRegistrationTypeId()).getRegistrationName());
+                    pationInfo.setNoShowNumber(patient.getNoShowNumber());
+                    patientAppiontmentPationInfos_e_t.add(pationInfo);
+                }
+            } else if (appointmentRecord.getRegistrationTime().equals(fourteen_fifteen)) {
+                if (!Objects.equals(appointmentRecord.getRegistrationStatus(), "canceled") && !Objects.equals(appointmentRecord.getRegistrationStatus(), "stopped")) {
+                    PatientAppiontmentPationInfo pationInfo = new PatientAppiontmentPationInfo();
+                    pationInfo.setAppointmentStatus(appointmentRecord.getRegistrationStatus());
+                    Patient patient = patientMapper.selectById(appointmentRecord.getPatientId());
+                    BeanUtils.copyProperties(patient, pationInfo);
+                    pationInfo.setPatientId(patient.getId());
+                    pationInfo.setAppointmentId(appointmentRecord.getId());
+                    pationInfo.setRegistrationName(registrationMapper.selectById(appointmentRecord.getRegistrationTypeId()).getRegistrationName());
+                    pationInfo.setNoShowNumber(patient.getNoShowNumber());
+                    patientAppiontmentPationInfos_f_f.add(pationInfo);
+                }
+            } else if (appointmentRecord.getRegistrationTime().equals(fifteen_sixteen)) {
+                if (!Objects.equals(appointmentRecord.getRegistrationStatus(), "canceled") && !Objects.equals(appointmentRecord.getRegistrationStatus(), "stopped")) {
+                    PatientAppiontmentPationInfo pationInfo = new PatientAppiontmentPationInfo();
+                    pationInfo.setAppointmentStatus(appointmentRecord.getRegistrationStatus());
+                    Patient patient = patientMapper.selectById(appointmentRecord.getPatientId());
+                    BeanUtils.copyProperties(patient, pationInfo);
+                    pationInfo.setPatientId(patient.getId());
+                    pationInfo.setAppointmentId(appointmentRecord.getId());
+                    pationInfo.setRegistrationName(registrationMapper.selectById(appointmentRecord.getRegistrationTypeId()).getRegistrationName());
+                    pationInfo.setNoShowNumber(patient.getNoShowNumber());
+                    patientAppiontmentPationInfos_f_s.add(pationInfo);
+                }
+            } else if (appointmentRecord.getRegistrationTime().equals(sixteen_seventeen)) {
+                if (!Objects.equals(appointmentRecord.getRegistrationStatus(), "canceled") && !Objects.equals(appointmentRecord.getRegistrationStatus(), "stopped")) {
+                    PatientAppiontmentPationInfo pationInfo = new PatientAppiontmentPationInfo();
+                    pationInfo.setAppointmentStatus(appointmentRecord.getRegistrationStatus());
+                    Patient patient = patientMapper.selectById(appointmentRecord.getPatientId());
+                    BeanUtils.copyProperties(patient, pationInfo);
+                    pationInfo.setPatientId(patient.getId());
+                    pationInfo.setAppointmentId(appointmentRecord.getId());
+                    pationInfo.setRegistrationName(registrationMapper.selectById(appointmentRecord.getRegistrationTypeId()).getRegistrationName());
+                    pationInfo.setNoShowNumber(patient.getNoShowNumber());
+                    patientAppiontmentPationInfos_s_s.add(pationInfo);
                 }
             }
-            return patients;
+
         }
+        patients_nine_ten.setPatientAppiontmentPationInfos(patientAppiontmentPationInfos_n_t);
+        patients_ten_eleven.setPatientAppiontmentPationInfos(patientAppiontmentPationInfos_t_e);
+        patients_eleven_twelve.setPatientAppiontmentPationInfos(patientAppiontmentPationInfos_e_t);
+        patients_fourteen_fifteen.setPatientAppiontmentPationInfos(patientAppiontmentPationInfos_f_f);
+        patients_fifteen_sixteen.setPatientAppiontmentPationInfos(patientAppiontmentPationInfos_f_s);
+        patients_sixteen_seventeen.setPatientAppiontmentPationInfos(patientAppiontmentPationInfos_s_s);
+        patients.add(patients_nine_ten);
+        patients.add(patients_ten_eleven);
+        patients.add(patients_eleven_twelve);
+        patients.add(patients_fourteen_fifteen);
+        patients.add(patients_fifteen_sixteen);
+        patients.add(patients_sixteen_seventeen);
+        return patients;
     }
+
 
     /**
      * 设置患者是否失约
      */
-    public void setPatientCredit(PatientAppointmentInfoDTO patientAppointmentInfoDTO) {
-        Doctor doctor = doctorMapper.selectById(BaseContext.getCurrentId());
-        if (patientAppointmentInfoDTO.getStatus().equals("waiting")) {
-            appointmentMapper.setStatusFinashed(doctor.getName(), patientAppointmentInfoDTO, "visited");
-        } else {
-            appointmentMapper.setStatusFinashed(doctor.getName(), patientAppointmentInfoDTO, "noVisited");
-        }
+    @Transactional
+    public void setPatientCredit(PatientAppointment_PatientInfoDTO patientAppointmentInfoDTO) {
+        patientMapper.updatePatient(patientAppointmentInfoDTO);
+        appointmentMapper.setStatusFinashed(patientAppointmentInfoDTO);
     }
 
     /**
@@ -573,6 +661,18 @@ public class DoctorServiceImpl implements DoctorService {
      */
     public List<AppointmentRecords> queryPatientAppointment(Long patientId) {
         return appointmentMapper.selectByPatientId(patientId);
+    }
+
+    /**
+     * 修改密码
+     */
+    public void updatePassword(UpdatePasswordDTO updatePasswordDTO) {
+        Doctor doctor = doctorMapper.selectById(BaseContext.getCurrentId());
+        if ((doctor.getPassword().equals(DigestUtils.md5DigestAsHex(updatePasswordDTO.getOld_password().getBytes())))) {
+            doctorMapper.updatePassword(BaseContext.getCurrentId(), updatePasswordDTO.getNew_password());
+        } else {
+            throw new PasswordEditFailedException(MessageConstant.PASSWORD_EDIT_FAILED);
+        }
     }
 
 

@@ -5,6 +5,8 @@ import lombok.Data;
 @Data
 public class AppointmentRecords {
 
+    private Long id;
+
     private Long patientId;
 
     private String registrationTime;

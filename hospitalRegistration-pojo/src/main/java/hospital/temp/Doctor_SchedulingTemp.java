@@ -1,5 +1,6 @@
 package hospital.temp;
 
+import hospital.entity.RegistrationType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -24,5 +25,5 @@ public class Doctor_SchedulingTemp {
     private int afternoonCheckNumber;
 
     //挂号种类id
-    private List<Long> registrationType_Ids;
+    private List<RegistrationType> registrationTypes;
 }

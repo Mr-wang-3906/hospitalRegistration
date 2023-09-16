@@ -12,6 +12,7 @@ import hospital.temp.Orders;
 import hospital.temp.PatientInfo;
 import hospital.result.Result;
 import hospital.service.PatientService;
+import hospital.vo.Patient_Doctor_SchedulingVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
@@ -38,8 +39,8 @@ public class PatientController {
      */
     @PostMapping("/register")
     @ApiOperation("患者注册")
-    public Result patientRegister(@RequestBody PatientRegisterDTO patientRegisterDTO, HttpServletRequest httpServletRequest) {
-        patientService.insertNewPatient(patientRegisterDTO, httpServletRequest);
+    public Result patientRegister(@RequestBody PatientRegisterDTO patientRegisterDTO) {
+        patientService.insertNewPatient(patientRegisterDTO);
         return Result.success();
     }
 
@@ -68,9 +69,9 @@ public class PatientController {
      */
     @GetMapping("/choice/{doctorId}")
     @ApiOperation(value = "选择医生")
-    public Result<List<Patient_Doctor_Scheduling>> choiceDoctor(@PathVariable Long doctorId) {
-        List<Patient_Doctor_Scheduling> patientDoctorSchedulings = patientService.choiceDoctor(doctorId);
-        return Result.success(patientDoctorSchedulings);
+    public Result<List<Patient_Doctor_SchedulingVO>> choiceDoctor(@PathVariable Long doctorId) {
+        List<Patient_Doctor_SchedulingVO> patientDoctorSchedulingVOs = patientService.choiceDoctor(doctorId);
+        return Result.success(patientDoctorSchedulingVOs);
     }
 
     /**
