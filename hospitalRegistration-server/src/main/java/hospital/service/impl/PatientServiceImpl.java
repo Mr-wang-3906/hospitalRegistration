@@ -16,15 +16,13 @@ import hospital.temp.PatientInfo;
 import hospital.exception.PasswordErrorException;
 import hospital.exception.RegisterFailedException;
 import hospital.service.PatientService;
-import hospital.utils.DataUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
-import javax.sql.DataSource;
 import java.sql.Date;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -32,7 +30,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import static hospital.controller.doctor.DoctorController.verCode;
+
 
 @Service
 public class PatientServiceImpl implements PatientService {
@@ -48,6 +46,9 @@ public class PatientServiceImpl implements PatientService {
 
     @Autowired
     private RegistrationMapper registrationMapper;
+
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
 
     /**
      * 用于取消定时任务
@@ -88,21 +89,23 @@ public class PatientServiceImpl implements PatientService {
      * 患者注册
      */
     public void insertNewPatient(PatientRegisterDTO patientRegisterDTO, HttpServletRequest httpServletRequest) {
-        HttpSession session = httpServletRequest.getSession();
-        Map<String, String> codeMap = (Map<String, String>) session.getAttribute("verCode");
+        String redisKey = "email_" + patientRegisterDTO.getEmailAddress();
+
+        // 检查Redis中是否存在指定的键
+        boolean keyExists = Boolean.TRUE.equals(redisTemplate.hasKey(redisKey));
         String code;
-        try {
-            code = codeMap.get("code");
-        } catch (Exception e) {
-            //验证码过期，或未找到  ---验证码无效
+        if (keyExists) {
+            // 从Redis中获取验证码值
+            code = redisTemplate.opsForValue().get(redisKey);
+        } else {
+            // Redis中不存在指定的键
             throw new RegisterFailedException(MessageConstant.REGISTER_TIMEOUT);
         }
         //验证码判断
-        if (!verCode.toUpperCase().equals(code)) {
+        if (!patientRegisterDTO.getVerify().equals(code)) {
             throw new RegisterFailedException(MessageConstant.REGISTER_FAILED);
         }
-        //验证码使用完后session删除
-        session.removeAttribute("verCode");
+
         Patient patient = patientMapper.selectByUsername(patientRegisterDTO.getUserName());
         //用户名是否可用
         if (patient != null) {

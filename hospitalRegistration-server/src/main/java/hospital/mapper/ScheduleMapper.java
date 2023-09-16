@@ -10,6 +10,7 @@ import org.apache.ibatis.annotations.Param;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface ScheduleMapper {
@@ -19,7 +20,7 @@ public interface ScheduleMapper {
 
     List<Doctor_Scheduling> selectDoctorScheduleByRegistrationTypeId(Long registrationTypeId);
 
-    void insertTemplate(@Param("template") ScheduleTemplateDTO template, @Param("registrationTypeIds") String registrationTypeIds);
+    Long insertTemplate(Map<String, Object> map);
 
     List<ScheduleTemplate> selectByDoctorId(Long doctorId);
 
@@ -74,4 +75,6 @@ public interface ScheduleMapper {
     void insertNewDoctorAppointment(@Param("newDoctorId") Long newDoctorId, @Param("date") String date);
 
     void updatePatientDoctorScheduling2(@Param("doctorScheduling") Doctor_Scheduling doctorScheduling);
+
+    ScheduleTemplate selectNewTempalte(@Param("template") ScheduleTemplateDTO template, @Param("registrationTypeIds") String registrationTypeIds);
 }

@@ -5,13 +5,15 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class Doctor_SchedulingVO {
+public class Doctor_SchedulingVO implements Serializable {
 
     //医生id
     private Long doctorId;
@@ -26,5 +28,5 @@ public class Doctor_SchedulingVO {
     private int afternoonCheckNumber;
 
     //挂号种类
-    private List<RegistrationType> registrationTypes;
+    private ArrayList<RegistrationType> registrationTypes;
 }

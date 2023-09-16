@@ -32,7 +32,7 @@ public class CorsFilter implements Filter {
         httpServletResponse.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Token");
 
         //响应类型
-        httpServletResponse.setHeader("Access-Control-Allow-Methods", "POST, GET, PUT, OPTIONS, DELETE");
+        httpServletResponse.setHeader("Access-Control-Allow-Methods", "POST, GET, PUT, OPTIONS, DELETE,TOKEN");
 
 
         filterChain.doFilter(servletRequest, servletResponse);

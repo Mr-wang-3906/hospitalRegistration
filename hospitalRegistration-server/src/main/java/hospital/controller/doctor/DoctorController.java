@@ -3,7 +3,7 @@ package hospital.controller.doctor;
 import hospital.context.BaseContext;
 import hospital.dto.*;
 import hospital.entity.AppointmentRecords;
-import hospital.entity.Patient;
+
 import hospital.entity.RegistrationType;
 import hospital.result.Result;
 import hospital.service.DoctorService;
@@ -16,11 +16,13 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.HttpServletRequest;
-import java.sql.Date;
+
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/doctor")
@@ -29,17 +31,19 @@ import java.util.List;
 public class DoctorController {
 
     @Autowired
+    private RedisTemplate redisTemplate;
+
+    @Autowired
     private DoctorService doctorService;
 
-    public static String verCode = "";
 
     /**
      * 医生注册(他人注册)
      **/
     @PostMapping("/registerOther")
     @ApiOperation(value = "医生注册(他人注册)")
-    public Result doctorRegisterOther(@RequestBody DoctorRegisterDTO doctorRegisterDTO, HttpServletRequest httpServletRequest) {
-        doctorService.insertNewDoctor(doctorRegisterDTO, httpServletRequest);
+    public Result doctorRegisterOther(@RequestBody DoctorRegisterDTO doctorRegisterDTO) {
+        doctorService.insertNewDoctor(doctorRegisterDTO);
         return Result.success();
     }
 
@@ -89,6 +93,7 @@ public class DoctorController {
     @PostMapping("/registration/update")
     @ApiOperation("修改挂号种类")
     public Result doctorUpdateRegistration(@RequestBody RegistrationType registrationType) {
+        cleanCache();
         doctorService.updateRegistrationType(registrationType);
         return Result.success();
     }
@@ -99,6 +104,7 @@ public class DoctorController {
     @PostMapping("/registration/delete")
     @ApiOperation("删除挂号种类")
     public Result doctorDeleteRegistration(@RequestBody List<Long> ids) {
+        cleanCache();
         doctorService.deleteRegistrationType(ids);
         return Result.success();
     }
@@ -108,9 +114,9 @@ public class DoctorController {
      */
     @PostMapping("/template/add")
     @ApiOperation(value = "新增排班模板")
-    public Result doctorAddTemplate(@RequestBody ScheduleTemplateDTO scheduleTemplateDTO) {
-        doctorService.addTemplate(scheduleTemplateDTO);
-        return Result.success();
+    public Result<Long> doctorAddTemplate(@RequestBody ScheduleTemplateDTO scheduleTemplateDTO) {
+        Long newTemplateId = doctorService.addTemplate(scheduleTemplateDTO);
+        return Result.success(newTemplateId);
     }
 
     /**
@@ -149,8 +155,26 @@ public class DoctorController {
     @GetMapping("/schedule/query")
     @ApiOperation("排班信息查询")
     public Result<List<Doctor_SchedulingVO>> doctorQuerySchedule() {
-        List<Doctor_SchedulingVO> doctorSchedules = doctorService.querySchedule(BaseContext.getCurrentId());
-        return Result.success(doctorSchedules);
+        String key = "doctor_scheduling_" + BaseContext.getCurrentId();
+        List<Object> redisList = redisTemplate.opsForList().range(key, 0, -1);
+        ArrayList<Doctor_SchedulingVO> list = new ArrayList<>();
+
+        if (redisList == null || redisList.isEmpty()) {
+            // 如果不存在，查询数据库，将查询的数据放入Redis中
+            list = doctorService.querySchedule(BaseContext.getCurrentId());
+            if (list != null && !list.isEmpty()) {
+                redisTemplate.opsForList().rightPushAll(key, list.toArray());
+            }
+        } else {
+            // 如果存在，直接使用Redis中的数据
+            for (Object obj : redisList) {
+                if (obj instanceof Doctor_SchedulingVO) {
+                    list.add((Doctor_SchedulingVO) obj);
+                }
+            }
+        }
+
+        return Result.success(list);
     }
 
     /**
@@ -159,6 +183,7 @@ public class DoctorController {
     @PostMapping("/schedule/template")
     @ApiOperation(value = "使用模板为某天排班")
     public Result doctorSetScheduleWithTemplate(@RequestBody DoctorSetScheduleWithTemplate doctorSetScheduleWithTemplate) {
+        cleanCache();
         doctorService.setScheduleWithTemplate(doctorSetScheduleWithTemplate);
         return Result.success();
     }
@@ -169,6 +194,7 @@ public class DoctorController {
     @PostMapping("/schedule/set")
     @ApiOperation("单独修改某日排班")
     public Result doctorSetOneDaySchedule(@RequestBody Doctor_SchedulingTemp doctorSchedulingTemp) {
+        cleanCache();
         doctorService.updateOneDaySchedule(doctorSchedulingTemp);
         return Result.success();
     }
@@ -189,6 +215,7 @@ public class DoctorController {
     @PostMapping("/schedule/copy/week")
     @ApiOperation(value = "排班复制-周复制")
     public Result scheduleCopyWeek(@RequestBody ScheduleCopy_week scheduleCopyWeek) {
+        cleanCache();
         doctorService.copyScheduleWeek(scheduleCopyWeek);
         return Result.success();
     }
@@ -199,6 +226,7 @@ public class DoctorController {
     @PostMapping("/schedule/copy/month")
     @ApiOperation(value = "排班复制-月复制")
     public Result scheduleCopyMonth(@RequestBody ScheduleCopy_month scheduleCopyMonth) {
+        cleanCache();
         doctorService.copyScheduleMonth(scheduleCopyMonth);
         return Result.success();
     }
@@ -209,6 +237,7 @@ public class DoctorController {
     @PostMapping("/schedule/copy/day")
     @ApiOperation(value = "排班复制-日复制")
     public Result scheduleCopyDay(@RequestBody ScheduleCopy_day scheduleCopyDay) {
+        cleanCache();
         doctorService.copyScheduleDay(scheduleCopyDay);
         return Result.success();
     }
@@ -251,5 +280,11 @@ public class DoctorController {
     public Result<List<AppointmentRecords>> queryPatientAppointment(@PathVariable Long patientId){
         List<AppointmentRecords> appointmentRecordsList = doctorService.queryPatientAppointment(patientId);
         return Result.success(appointmentRecordsList);
+    }
+
+    private void cleanCache() {
+        //清除所有缓存
+        Set keys = redisTemplate.keys("*doctor_scheduling_*");
+        redisTemplate.delete(keys);
     }
 }

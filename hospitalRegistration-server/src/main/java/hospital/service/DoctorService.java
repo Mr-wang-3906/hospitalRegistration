@@ -10,11 +10,11 @@ import hospital.temp.PatientAppointmentInfo;
 import hospital.vo.Doctor_SchedulingVO;
 import hospital.vo.ScheduleTemplateVO;
 
-import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
 import java.util.List;
 
 public interface DoctorService {
-    void insertNewDoctor(DoctorRegisterDTO doctorRegisterDTO, HttpServletRequest httpServletRequest);
+    void insertNewDoctor(DoctorRegisterDTO doctorRegisterDTO);
 
     Doctor login(LoginDTO loginDTO);
 
@@ -26,7 +26,7 @@ public interface DoctorService {
 
     void deleteRegistrationType(List<Long> ids);
 
-    void addTemplate(ScheduleTemplateDTO scheduleTemplateDTO);
+    Long addTemplate(ScheduleTemplateDTO scheduleTemplateDTO);
 
     List<ScheduleTemplateVO> queryTemplate(Long doctorId);
 
@@ -38,7 +38,7 @@ public interface DoctorService {
 
     void updateInfo(DoctorInfo doctorInfo);
 
-    List<Doctor_SchedulingVO> querySchedule(Long doctorId);
+    ArrayList<Doctor_SchedulingVO> querySchedule(Long doctorId);
 
     void setScheduleWithTemplate(DoctorSetScheduleWithTemplate doctorSetScheduleWithTemplate);
 

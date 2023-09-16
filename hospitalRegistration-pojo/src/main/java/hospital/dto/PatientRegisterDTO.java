@@ -27,4 +27,7 @@ public class PatientRegisterDTO {
 
     //验证码
     private String verify;
+
+    //邮箱地址
+    private String emailAddress;
 }

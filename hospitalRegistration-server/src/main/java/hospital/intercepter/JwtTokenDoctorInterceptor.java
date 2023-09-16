@@ -58,7 +58,7 @@ public class JwtTokenDoctorInterceptor implements HandlerInterceptor {
             return true;
         } catch (Exception ex) {
             //4、不通过，响应401 状态码
-            response.setStatus(401);
+            response.setStatus(200);
             throw new UserNotLoginException(MessageConstant.USER_NOT_LOGIN);
         }
     }

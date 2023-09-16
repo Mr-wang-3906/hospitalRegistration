@@ -2,16 +2,15 @@ package hospital.controller.utils;
 
 import hospital.constant.MessageConstant;
 import hospital.controller.doctor.DoctorController;
-import hospital.controller.patient.PatientController;
 import hospital.exception.RegisterFailedException;
 import hospital.result.Result;
-import hospital.service.impl.PatientServiceImpl;
 import hospital.utils.DataUtils;
 import hospital.utils.VerifyCode;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -20,13 +19,10 @@ import org.springframework.web.bind.annotation.*;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -41,13 +37,11 @@ public class MailRegisterController {
     @Autowired
     JavaMailSenderImpl mailSender;
 
-/*
-    //创建线程池对象
-    ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(3)
-*/
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
 
-    // 获取服务器的全局线程池
-    ScheduledExecutorService executorService = Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors());
+
+    private static final int EMAIL_TIME = 5;
 
 
     /**
@@ -56,55 +50,12 @@ public class MailRegisterController {
     @GetMapping("/verify")
     @ResponseBody
     @ApiOperation(value = "发送邮箱注册码邮箱")
-    public Result sendEmail(@RequestParam String emailAddress, HttpServletRequest request) {
-        HttpSession session = request.getSession();
-        Map<String, String> codeMap = (Map<String, String>) session.getAttribute("verCode");
-        String time = DataUtils.format(new Date());
+    public Result sendEmail(@RequestParam String emailAddress) {
+        String redisKey = "email_" + emailAddress; // 使用emailAddress作为Redis键
         String verCode = VerifyCode.setVerifyCode();
-        if (codeMap != null && emailAddress.equals(codeMap.get("email"))) {
-            long lastTimestamp = 0;
-            if (codeMap.containsKey("timestamp")) {
-                // 获取上次发送的时间戳
-                lastTimestamp = Long.parseLong(codeMap.get("timestamp"));
-            }
-            // 获取当前时间戳
-            long currentTimestamp = System.currentTimeMillis();
-            // 检查时间间隔是否小于5分钟
-            if (currentTimestamp - lastTimestamp < 5 * 60 * 1000) {
-                // 检查操作次数是否达到限制
-                int operationCount = Integer.parseInt(codeMap.getOrDefault("count", "0"));
-                if (operationCount >= 3) {
-                    // 获取上次发送的时间
-                    String lastSendTime = codeMap.getOrDefault("time", "");
-                    throw new RegisterFailedException("操作频繁，请稍后再试"); // 抛出异常或返回错误信息
-                } else {
-                    // 更新操作次数
-                    codeMap.put("count", String.valueOf(operationCount + 1));
-                }
-            } else {
-                // 重置操作次数
-                codeMap.put("count", "1");
-            }
-        } else {
-            // 创建新的验证码记录
-            verCode = VerifyCode.setVerifyCode();
-            codeMap = new HashMap<>();
-            codeMap.put("code", verCode);
-            codeMap.put("email", emailAddress);
-            codeMap.put("count", "1");
-            session.setAttribute("verCode", codeMap);
-        }
+        String time = DataUtils.format(new Date(), DataUtils.FORMAT_FULL_CN);
 
-        // 更新时间戳
-        codeMap.put("timestamp", String.valueOf(System.currentTimeMillis()));
-        codeMap.put("time", time);
-
-        // 创建计时线程池，到时间自动移除验证码
-        executorService.schedule(() -> {
-            session.removeAttribute("verCode");
-        }, 5 * 60, TimeUnit.SECONDS);
-
-        //一下为发送邮件部分
+        // 发送邮件的代码部分
         MimeMessage mimeMessage = null;
         MimeMessageHelper helper = null;
         try {
@@ -144,7 +95,8 @@ public class MailRegisterController {
             throw new RegisterFailedException(MessageConstant.SEND_EMAIL_FAILED);
         }
         //发送验证码成功
-        DoctorController.verCode = verCode;
+        // 将验证码存储到Redis中，设置有效期为五分钟
+        redisTemplate.opsForValue().set(redisKey, verCode, EMAIL_TIME, TimeUnit.MINUTES);
         return Result.success();
     }
 

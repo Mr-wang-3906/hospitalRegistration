@@ -17,6 +17,12 @@ spring:
     username: root
     password: Qlzoam123456
 
+  redis:
+    host: localhost
+    port: 6379
+    password: Qlzoam123456
+    database: 1
+
   #邮件发送
   mail:
     username: 2892739899@qq.com

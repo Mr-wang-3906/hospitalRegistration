@@ -15,16 +15,13 @@ import hospital.vo.Doctor_SchedulingVO;
 import hospital.vo.ScheduleTemplateVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.DigestUtils;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
 import java.time.LocalDate;
 import java.util.*;
-
-import static hospital.controller.doctor.DoctorController.verCode;
 
 @Service
 public class DoctorServiceImpl implements DoctorService {
@@ -45,26 +42,31 @@ public class DoctorServiceImpl implements DoctorService {
     @Autowired
     private PatientMapper patientMapper;
 
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
+
     /**
      * 新增医生
      **/
     @Transactional
-    public void insertNewDoctor(DoctorRegisterDTO doctorRegisterDTO, HttpServletRequest httpServletRequest) {
-        HttpSession session = httpServletRequest.getSession();
-        Map<String, String> codeMap = (Map<String, String>) session.getAttribute("verCode");
+    public void insertNewDoctor(DoctorRegisterDTO doctorRegisterDTO) {
+        String redisKey = "email_" + doctorRegisterDTO.getEmailAddress();
+
+        // 检查Redis中是否存在指定的键
+        boolean keyExists = Boolean.TRUE.equals(redisTemplate.hasKey(redisKey));
         String code;
-        try {
-            code = codeMap.get("code");
-        } catch (Exception e) {
-            //验证码过期，或未找到  ---验证码无效
+        if (keyExists) {
+            // 从Redis中获取验证码值
+            code = redisTemplate.opsForValue().get(redisKey);
+        } else {
+            // Redis中不存在指定的键
             throw new RegisterFailedException(MessageConstant.REGISTER_TIMEOUT);
         }
         //验证码判断
-        if (!verCode.toUpperCase().equals(code)) {
+        if (!doctorRegisterDTO.getVerify().equals(code)) {
             throw new RegisterFailedException(MessageConstant.REGISTER_FAILED);
         }
-        //验证码使用完后session删除
-        session.removeAttribute("verCode");
+
         Doctor doctor = doctorMapper.selectByUsername(doctorRegisterDTO.getUserName());
         //用户名是否可用
         if (doctor != null) {
@@ -99,8 +101,8 @@ public class DoctorServiceImpl implements DoctorService {
 
         //为新医生开辟七个预约挂号日期
         ArrayList<String> futureDaysList = DataUtils.futureDaysList(7);
-        for (String day: futureDaysList) {
-            scheduleMapper.insertNewDoctorAppointment(newDoctor.getId(),day);
+        for (String day : futureDaysList) {
+            scheduleMapper.insertNewDoctorAppointment(newDoctor.getId(), day);
         }
     }
 
@@ -174,17 +176,23 @@ public class DoctorServiceImpl implements DoctorService {
 
     /**
      * 新增排班模板
+     *
+     * @return
      */
     @Transactional
-    public void addTemplate(ScheduleTemplateDTO scheduleTemplateDTO) {
+    public Long addTemplate(ScheduleTemplateDTO scheduleTemplateDTO) {
         scheduleTemplateDTO.setDoctorId(BaseContext.getCurrentId());
         StringBuilder registrationTypes_Ids = new StringBuilder();
-        for (Long registrationTypeId : scheduleTemplateDTO.getRegistrationTypes_Ids()) {
-            registrationTypes_Ids.append(registrationTypeId);
+        for (RegistrationType registrationType : scheduleTemplateDTO.getRegistrationTypes()) {
+            registrationTypes_Ids.append(registrationType.getId());
             registrationTypes_Ids.append(",");
         }
         registrationTypes_Ids.deleteCharAt(registrationTypes_Ids.length() - 1);
-        scheduleMapper.insertTemplate(scheduleTemplateDTO, String.valueOf(registrationTypes_Ids));
+        Map<String, Object> paramMap = new HashMap<>();// 模板类对象
+        paramMap.put("template", scheduleTemplateDTO);
+        paramMap.put("registrationTypeIds", registrationTypes_Ids.toString()); // 字符串参数
+        scheduleMapper.insertTemplate(paramMap);
+        return (Long) (paramMap.get("id"));
     }
 
 
@@ -234,8 +242,8 @@ public class DoctorServiceImpl implements DoctorService {
         //直接修改
         scheduleTemplateDTO.setDoctorId(BaseContext.getCurrentId());
         StringBuilder registrationTypeIds = new StringBuilder();
-        for (Long registrationTypeId : scheduleTemplateDTO.getRegistrationTypes_Ids()) {
-            registrationTypeIds.append(registrationTypeId);
+        for (RegistrationType registrationType : scheduleTemplateDTO.getRegistrationTypes()) {
+            registrationTypeIds.append(registrationType.getId());
             registrationTypeIds.append(",");
         }
         registrationTypeIds.deleteCharAt(registrationTypeIds.length() - 1);
@@ -263,9 +271,9 @@ public class DoctorServiceImpl implements DoctorService {
      * 查询排班信息
      */
     @Transactional
-    public List<Doctor_SchedulingVO> querySchedule(Long doctorId) {
+    public ArrayList<Doctor_SchedulingVO> querySchedule(Long doctorId) {
         List<Doctor_Scheduling> doctorSchedulingList = scheduleMapper.selectDoctorScheduleByDoctorId(doctorId);
-        List<Doctor_SchedulingVO> doctorSchedulingVOS = new LinkedList<>();
+        ArrayList<Doctor_SchedulingVO> doctorSchedulingVOS = new ArrayList<>();
         for (Doctor_Scheduling doctorScheduling : doctorSchedulingList) {
             Doctor_SchedulingVO doctorSchedulingVO = new Doctor_SchedulingVO();
             String data = DataUtils.format(doctorScheduling.getData(), DataUtils.FORMAT_LONOGRAM);
@@ -274,7 +282,7 @@ public class DoctorServiceImpl implements DoctorService {
             if (doctorScheduling.getRegistrationTypeIds() != null) {
                 //再来处理registrationType连表
                 String[] registrationTypeIds = doctorScheduling.getRegistrationTypeIds().split(",");
-                List<RegistrationType> registrationTypes = new LinkedList<>();
+                List<RegistrationType> registrationTypes = new ArrayList<>();
                 for (String registrationTypeId : registrationTypeIds) {
                     if (!registrationTypeId.equals("null")) {
                         if (registrationTypes != null) {
@@ -284,7 +292,7 @@ public class DoctorServiceImpl implements DoctorService {
                         registrationTypes = null;
                     }
                 }
-                doctorSchedulingVO.setRegistrationTypes(registrationTypes);
+                doctorSchedulingVO.setRegistrationTypes((ArrayList<RegistrationType>) registrationTypes);
                 doctorSchedulingVOS.add(doctorSchedulingVO);
             } else {
                 doctorSchedulingVOS.add(doctorSchedulingVO);
@@ -554,7 +562,7 @@ public class DoctorServiceImpl implements DoctorService {
     public void setPatientCredit(PatientAppointmentInfoDTO patientAppointmentInfoDTO) {
         Doctor doctor = doctorMapper.selectById(BaseContext.getCurrentId());
         if (patientAppointmentInfoDTO.getStatus().equals("waiting")) {
-            appointmentMapper.setStatusFinashed(doctor.getName(), patientAppointmentInfoDTO,"visited");
+            appointmentMapper.setStatusFinashed(doctor.getName(), patientAppointmentInfoDTO, "visited");
         } else {
             appointmentMapper.setStatusFinashed(doctor.getName(), patientAppointmentInfoDTO, "noVisited");
         }

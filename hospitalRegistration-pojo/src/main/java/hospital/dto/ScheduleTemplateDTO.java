@@ -30,6 +30,6 @@ public class ScheduleTemplateDTO {
     private int afternoonCheckNumber;
 
     //挂号种类备选项
-    private List<Long> registrationTypes_Ids;
+    private List<RegistrationType> registrationTypes;
 
 }

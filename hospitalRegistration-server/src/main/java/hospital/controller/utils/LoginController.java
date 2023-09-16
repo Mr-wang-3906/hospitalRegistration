@@ -42,7 +42,7 @@ public class LoginController {
     /**
      * 用户登录
      **/
-    @PostMapping("/login")
+    @PostMapping
     @ApiOperation(value = "用户登录")
     public Result<LoginVO> doctorLogin(@RequestBody LoginDTO loginDTO) {
         log.info("用户登录：{}", loginDTO);
