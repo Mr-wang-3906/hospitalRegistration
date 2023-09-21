@@ -295,12 +295,13 @@ public final class DataUtils {
 
     /**
      * 获取过去 x天到今天 的日期
+     *
      * @param intervals
      * @return
      */
-    public static ArrayList<String> pastDaysList(int intervals ) {
+    public static ArrayList<String> pastDaysList(int intervals) {
         ArrayList<String> pastDaysList = new ArrayList<>();
-        for (int i = 0; i <intervals; i++) {
+        for (int i = 0; i < intervals; i++) {
             pastDaysList.add(getPastDate(i));
         }
         Collections.reverse(pastDaysList);
@@ -309,12 +310,13 @@ public final class DataUtils {
 
     /**
      * 获取 今天到未来x天 的日期
+     *
      * @param intervals
      * @return
      */
-    public static ArrayList<String> futureDaysList(int intervals ) {
+    public static ArrayList<String> futureDaysList(int intervals) {
         ArrayList<String> futureDaysList = new ArrayList<>();
-        for (int i = 0; i <intervals; i++) {
+        for (int i = 0; i < intervals; i++) {
             futureDaysList.add(getFutureDate(i));
         }
         return futureDaysList;
@@ -339,11 +341,11 @@ public final class DataUtils {
     }
 
     /**
-     *根据年 月 周数 得到这一周的日期
+     * 根据年 月 周数 得到这一周的日期
      */
     public static List<LocalDate> getWeekDates(int year, int month, int week) throws FormatErrorException {
         int weekCount = getWeekCount(year, month);
-        if (week > weekCount){
+        if (week > weekCount) {
             throw new FormatErrorException(month + "月只有" + weekCount + "周,请输入正确的周数");
         }
         List<LocalDate> weekDates = new ArrayList<>();
@@ -367,7 +369,9 @@ public final class DataUtils {
         return weekDates;
     }
 
-    /** 根据年 月数 得到所包含的周数 **/
+    /**
+     * 根据年 月数 得到所包含的周数
+     **/
     public static int getWeekCount(int year, int month) {
         YearMonth yearMonth = YearMonth.of(year, month);
         TemporalField weekOfYear = WeekFields.ISO.weekOfYear();
@@ -389,6 +393,7 @@ public final class DataUtils {
 
     /**
      * 根据年 周数 得到该周日期数
+     *
      * @param year
      * @param week
      * @return
@@ -422,40 +427,65 @@ public final class DataUtils {
 
     /**
      * 获取某年某月所有的日期
+     *
      * @param year
      * @param month
      * @return
      */
-        public static List<LocalDate> getMonthDates(int year, int month) {
-            List<LocalDate> monthDates = new ArrayList<>();
+    public static List<LocalDate> getMonthDates(int year, int month) {
+        List<LocalDate> monthDates = new ArrayList<>();
 
-            YearMonth yearMonth = YearMonth.of(year, month);
-            int daysInMonth = yearMonth.lengthOfMonth();
+        YearMonth yearMonth = YearMonth.of(year, month);
+        int daysInMonth = yearMonth.lengthOfMonth();
 
-            LocalDate firstDayOfMonth = yearMonth.atDay(1);
-            LocalDate lastDayOfMonth = yearMonth.atDay(daysInMonth);
+        LocalDate firstDayOfMonth = yearMonth.atDay(1);
+        LocalDate lastDayOfMonth = yearMonth.atDay(daysInMonth);
 
-            // 将每一天添加到列表中
-            LocalDate currentDate = firstDayOfMonth;
-            while (!currentDate.isAfter(lastDayOfMonth)) {
-                monthDates.add(currentDate);
-                currentDate = currentDate.plusDays(1);
-            }
-
-            return monthDates;
+        // 将每一天添加到列表中
+        LocalDate currentDate = firstDayOfMonth;
+        while (!currentDate.isAfter(lastDayOfMonth)) {
+            monthDates.add(currentDate);
+            currentDate = currentDate.plusDays(1);
         }
 
-        //将 HH-MM 转换成 YYYY-MM-DD HH:MM:00
-        public static String convertTimeFormat(String time) {
-            LocalDate today = LocalDate.now();
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-            String formattedDate = today.format(formatter);
+        return monthDates;
+    }
 
-            String[] parts = time.split("-");
-            String startTime = parts[0] + ":00";
-            String endTime = parts[1] + ":00";
+    //将 HH-MM 转换成 YYYY-MM-DD HH:MM:00
+    public static String convertTimeFormat(String time) {
+        LocalDate today = LocalDate.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        String formattedDate = today.format(formatter);
 
-            return formattedDate + " " + startTime + "-" + endTime;
+        String[] parts = time.split("-");
+        String startTime = parts[0] + ":00";
+        String endTime = parts[1] + ":00";
+
+        return formattedDate + " " + startTime + "-" + endTime;
+    }
+
+    //对字符串日期数组进行月的替换
+    public static ArrayList<String> replaceMonth(ArrayList<String> dates, String monthString) {
+        int month = Integer.parseInt(monthString);
+        ArrayList<String> modifiedDates = new ArrayList<>();
+
+        for (String date : dates) {
+            LocalDate localDate = LocalDate.parse(date);
+            LocalDate modifiedDate = localDate.withMonth(month);
+            modifiedDates.add(modifiedDate.toString());
         }
+
+        return modifiedDates;
+    }
+
+    //将redis剩余过期时间转化为mm:ss形式
+    public static String formatTime(long milliseconds) {
+        long seconds = milliseconds / 1000;
+        long minutes = seconds / 60;
+        seconds %= 60;
+
+        return String.format("%02d:%02d", minutes, seconds);
+    }
+
 
 }

@@ -18,4 +18,6 @@ public class AppointmentRecords {
     private String doctorName;
 
     private String registrationStatus;
+
+    private String oddNumber;
 }

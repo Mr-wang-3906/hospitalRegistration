@@ -20,9 +20,13 @@ public class MessageConstant {
     public static final String REGISTER_FAILED_BUSY = "注册失败,服务器繁忙";
     public static final String DELETE_FAILED_TEMPLATE = "排班模板至少要有一种挂号种类";
     public static final String DELETE_FAILED_DOCTOR = "已放号的排班不能修改";
+    public static final String DELETE_FAILED_DOCTOR_ALL = "该时段已全放号";
     public static final String DELETE_FAILED_DOCTOR_SCHEDULE = "排班至少要有一种挂号种类";
     public static final String NET_ERROR = "网络错误";
     public static final String DATE_SET_ERROR = "设置排班不能早于今天";
-    public static final String SQL_DATE_SET_ERROR = "模板重复";
+    public static final String DELETE_FAILED_DOCTOR_REGISTRATION = "医生至少套有一种挂号种类";
+    public static final String INSERT_ERROR_EXISTS = "该名称已被占用";
+    public static final String UPDATE_DOCTOR_ERROR_NULL = "名称不能为空";
+
 
 }

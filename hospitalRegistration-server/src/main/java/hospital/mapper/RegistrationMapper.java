@@ -20,4 +20,7 @@ public interface RegistrationMapper {
 
     RegistrationType queryRegistrationTypeOnlyOne(@Param("doctorId") Long doctorId, @Param("registrationName") String registrationName);
 
+    List<RegistrationType> selecetByDoctorId(Long doctorId);
+
+    RegistrationType selectByName(String registrationName);
 }

@@ -16,4 +16,6 @@ public interface PatientMapper {
     Patient selectById(Long patientId);
 
     void updatePatient(@Param("patientAppointmentInfoDTO") PatientAppointment_PatientInfoDTO patientAppointmentInfoDTO);
+
+    void addPatientNo_Show_Number(Long patientId);
 }

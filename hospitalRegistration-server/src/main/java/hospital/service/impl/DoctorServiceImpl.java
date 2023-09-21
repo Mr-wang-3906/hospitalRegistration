@@ -11,9 +11,7 @@ import hospital.temp.DoctorInfo;
 import hospital.temp.Doctor_SchedulingTemp;
 import hospital.temp.PatientAppointmentInfo;
 import hospital.utils.DataUtils;
-import hospital.vo.Doctor_SchedulingVO;
-import hospital.vo.PatientAppiontmentPationInfo;
-import hospital.vo.ScheduleTemplateVO;
+import hospital.vo.*;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -23,6 +21,7 @@ import org.springframework.util.DigestUtils;
 
 import java.time.LocalDate;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class DoctorServiceImpl implements DoctorService {
@@ -68,7 +67,7 @@ public class DoctorServiceImpl implements DoctorService {
             throw new RegisterFailedException(MessageConstant.REGISTER_FAILED);
         }
 
-        Doctor doctor = doctorMapper.selectByUsername(doctorRegisterDTO.getUserName());
+        Doctor doctor = doctorMapper.selectByUsername(doctorRegisterDTO.getUsername());
         //用户名是否可用
         if (doctor != null) {
             //返回，该用户）（username）已被注册过
@@ -77,6 +76,7 @@ public class DoctorServiceImpl implements DoctorService {
         //数据库插入数据
         Doctor doctorTemp = new Doctor();
         BeanUtils.copyProperties(doctorRegisterDTO, doctorTemp);
+        doctorTemp.setUserName(doctorRegisterDTO.getUsername());
         doctorTemp.setPassword(DigestUtils.md5DigestAsHex(doctorTemp.getPassword().getBytes()));
         doctorMapper.insertNewDoctor(doctorTemp);
         //是否插入数据成功
@@ -134,7 +134,12 @@ public class DoctorServiceImpl implements DoctorService {
     /**
      * 新增挂号种类
      */
+    @Transactional
     public void addRegistrationType(RegistrationType registrationType) {
+        RegistrationType registrationType1 = registrationMapper.selectByName(registrationType.getRegistrationName());
+        if (registrationType1 != null) {
+            throw new DateException(MessageConstant.INSERT_ERROR_EXISTS);
+        }
         registrationMapper.insertRegistrationType(BaseContext.getCurrentId(), registrationType);
     }
 
@@ -157,6 +162,10 @@ public class DoctorServiceImpl implements DoctorService {
      */
     @Transactional
     public void deleteRegistrationType(List<Long> ids) {
+        List<RegistrationType> registrationTypes = registrationMapper.selecetByDoctorId(BaseContext.getCurrentId());
+        if (registrationTypes.size() == ids.size()) {
+            throw new DeletionNotAllowedException(MessageConstant.DELETE_FAILED_DOCTOR_REGISTRATION);
+        }
         for (Long id : ids) {
             //判断是否有模板正在使用该挂号类别或医生的排班
             List<ScheduleTemplate> scheduleTemplates = scheduleMapper.selectByRegistrationTypeId(id);
@@ -182,6 +191,12 @@ public class DoctorServiceImpl implements DoctorService {
      */
     @Transactional
     public Long addTemplate(ScheduleTemplateDTO scheduleTemplateDTO) {
+        //排查是有已经存在
+        ScheduleTemplate scheduleTemplate = scheduleMapper.selectByName(scheduleTemplateDTO.getTemplateName());
+        if (scheduleTemplate != null) {
+            throw new DateException(MessageConstant.INSERT_ERROR_EXISTS);
+        }
+
         scheduleTemplateDTO.setDoctorId(BaseContext.getCurrentId());
         StringBuilder registrationTypes_Ids = new StringBuilder();
         for (RegistrationType registrationType : scheduleTemplateDTO.getRegistrationTypes()) {
@@ -264,7 +279,12 @@ public class DoctorServiceImpl implements DoctorService {
     /**
      * 修改医生信息
      */
+    @Transactional
     public void updateInfo(DoctorInfo doctorInfo) {
+        if (doctorInfo.getName() == null || doctorInfo.getName().equals("")) {
+            throw new DateException(MessageConstant.UPDATE_DOCTOR_ERROR_NULL);
+        }
+
         doctorMapper.updateInfo(BaseContext.getCurrentId(), doctorInfo);
     }
 
@@ -272,14 +292,14 @@ public class DoctorServiceImpl implements DoctorService {
      * 查询排班信息
      */
     @Transactional
-    public ArrayList<Doctor_SchedulingVO> querySchedule(Long doctorId) {
-        List<Doctor_Scheduling> doctorSchedulingList = scheduleMapper.selectDoctorScheduleByDoctorId(doctorId);
-        ArrayList<Doctor_SchedulingVO> doctorSchedulingVOS = new ArrayList<>();
-        for (Doctor_Scheduling doctorScheduling : doctorSchedulingList) {
-            Doctor_SchedulingVO doctorSchedulingVO = new Doctor_SchedulingVO();
+    public ArrayList<Doctor_Scheduling_includingStatusVO> querySchedule(Long doctorId) {
+        List<Doctor_Scheduling_includingStatus> doctorSchedulingList = scheduleMapper.selectDoctorScheduleByDoctorId(doctorId);
+        ArrayList<Doctor_Scheduling_includingStatusVO> doctorSchedulingVOS = new ArrayList<>();
+        for (Doctor_Scheduling_includingStatus doctorScheduling : doctorSchedulingList) {
+            Doctor_Scheduling_includingStatusVO doctorSchedulingIncludingStatusVO = new Doctor_Scheduling_includingStatusVO();
             String data = DataUtils.format(doctorScheduling.getData(), DataUtils.FORMAT_LONOGRAM);
-            BeanUtils.copyProperties(doctorScheduling, doctorSchedulingVO);
-            doctorSchedulingVO.setData(data);
+            BeanUtils.copyProperties(doctorScheduling, doctorSchedulingIncludingStatusVO);
+            doctorSchedulingIncludingStatusVO.setDate(data);
             if (doctorScheduling.getRegistrationTypeIds() != null) {
                 //再来处理registrationType连表
                 String[] registrationTypeIds = doctorScheduling.getRegistrationTypeIds().split(",");
@@ -291,11 +311,11 @@ public class DoctorServiceImpl implements DoctorService {
                         }
                     }
                 }
-                doctorSchedulingVO.setRegistrationTypes(registrationTypes);
-                doctorSchedulingVOS.add(doctorSchedulingVO);
+                doctorSchedulingIncludingStatusVO.setRegistrationTypes(registrationTypes);
+                doctorSchedulingVOS.add(doctorSchedulingIncludingStatusVO);
             } else {
-                doctorSchedulingVO.setRegistrationTypes(new ArrayList<RegistrationType>());
-                doctorSchedulingVOS.add(doctorSchedulingVO);
+                doctorSchedulingIncludingStatusVO.setRegistrationTypes(new ArrayList<>());
+                doctorSchedulingVOS.add(doctorSchedulingIncludingStatusVO);
             }
         }
 
@@ -305,6 +325,7 @@ public class DoctorServiceImpl implements DoctorService {
     /**
      * 使用模板为某天排班
      */
+    @Transactional
     public void setScheduleWithTemplate(DoctorSetScheduleWithTemplate doctorSetScheduleWithTemplate) {
         // 将 java.sql.Date 转换为 java.time.LocalDate
         LocalDate localDate = doctorSetScheduleWithTemplate.getDate().toLocalDate();
@@ -314,7 +335,7 @@ public class DoctorServiceImpl implements DoctorService {
         if (localDate.isBefore(today)) {
             throw new DateException(MessageConstant.DATE_SET_ERROR);
         }
-        Patient_Doctor_Scheduling patientDoctorScheduling = scheduleMapper.selectPatientDoctorSchedulingByIdAndDate(BaseContext.getCurrentId(), doctorSetScheduleWithTemplate.getDate());
+        Patient_Doctor_Scheduling patientDoctorScheduling = scheduleMapper.selectPatientDoctorSchedulingByIdAndDateAndRegistrationTypeIsNotNull(BaseContext.getCurrentId(), String.valueOf(doctorSetScheduleWithTemplate.getDate()));
         if (patientDoctorScheduling != null) {
             throw new UpdateFailedException(MessageConstant.DELETE_FAILED_DOCTOR);
         }
@@ -395,6 +416,7 @@ public class DoctorServiceImpl implements DoctorService {
     /**
      * 排班复制-周复制
      */
+    @Transactional
     public void copyScheduleWeek(ScheduleCopy_week weekNumber) {
         //取得复制源的天数
         int sourYear = Integer.parseInt(weekNumber.getSourWeekNumber().substring(0, 4));
@@ -418,12 +440,12 @@ public class DoctorServiceImpl implements DoctorService {
         //检查是否全放号了
         List<Patient_Doctor_Scheduling> patientDoctorSchedulings = new LinkedList<>();
         for (LocalDate targetDate : targetWeekDates) {
-            patientDoctorSchedulings.add(scheduleMapper.selectPatientDoctorSchedulingByIdAndDate(BaseContext.getCurrentId(), java.sql.Date.valueOf(targetDate)));
+            patientDoctorSchedulings.add(scheduleMapper.selectPatientDoctorSchedulingByIdAndDateAndRegistrationTypeIsNotNull(BaseContext.getCurrentId(), String.valueOf(targetDate)));
         }
-        if (patientDoctorSchedulings.stream()
-                .filter(Objects::nonNull)
-                .count() == 7) {
-            throw new UpdateFailedException(MessageConstant.DELETE_FAILED_DOCTOR);
+        //查出来不为空就是已放号
+        //若全不为空,则全已放号
+        if (patientDoctorSchedulings.stream().allMatch(Objects::nonNull)) {
+            throw new UpdateFailedException(MessageConstant.DELETE_FAILED_DOCTOR_ALL);
         }
         //取得复制源排班
         List<Doctor_Scheduling> sourceSchedulingList = new LinkedList<>();
@@ -445,27 +467,30 @@ public class DoctorServiceImpl implements DoctorService {
     public void copyScheduleMonth(ScheduleCopy_month scheduleCopyMonth) {
         //获得算上今天一共七天的日期
         ArrayList<String> futureDaysList = DataUtils.futureDaysList(7);
+        //得到目标月
+        String targetMonth = (scheduleCopyMonth.getTargetMonthNumber().substring(5, 7));
+        //将那七天替换为目标月的日期
+        futureDaysList = DataUtils.replaceMonth(futureDaysList, targetMonth);
         List<Patient_Doctor_Scheduling> patientDoctorSchedulings = new LinkedList<>();
+        //查看目标天是否全放号(不为空则已放号,存在一个空则还有未放号的)
         for (String onlineDate : futureDaysList) {
-            patientDoctorSchedulings.add(scheduleMapper.selectPatientDoctorSchedulingByIdAndDate(BaseContext.getCurrentId(), java.sql.Date.valueOf(onlineDate)));
+            patientDoctorSchedulings.add(scheduleMapper.selectPatientDoctorSchedulingByIdAndDateAndRegistrationTypeIsNotNull(BaseContext.getCurrentId(), onlineDate));
         }
-        if (patientDoctorSchedulings.stream()
-                .filter(Objects::nonNull)
-                .count() == 7) {
-            throw new UpdateFailedException(MessageConstant.DELETE_FAILED_DOCTOR);
+        //若全不为空,表明已全放号
+        if (patientDoctorSchedulings.stream().allMatch(Objects::nonNull)) {
+            throw new UpdateFailedException(MessageConstant.DELETE_FAILED_DOCTOR_ALL);
         }
 
-        int sourceMonth = Integer.parseInt(scheduleCopyMonth.getSourMonthNumber().substring(5, 7));
+        String sourceMonth = (scheduleCopyMonth.getSourMonthNumber().substring(5, 7));
         int year = Integer.parseInt(DataUtils.getYear(new Date()));
-        List<LocalDate> sourceDates = DataUtils.getMonthDates(year, sourceMonth);
+        List<LocalDate> sourceDates = DataUtils.getMonthDates(year, Integer.parseInt(sourceMonth));
         List<Doctor_Scheduling> sourceSchedulingList = new LinkedList<>();
         for (LocalDate sourceDate : sourceDates) {
             Doctor_Scheduling scheduling = scheduleMapper.selectByDoctorIdAndDate(BaseContext.getCurrentId(), String.valueOf(sourceDate));
             sourceSchedulingList.add(scheduling);
         }
 
-        int targetMonth = Integer.parseInt(scheduleCopyMonth.getTargetMonthNumber().substring(5, 7));
-        List<LocalDate> targetDates = DataUtils.getMonthDates(year, targetMonth);
+        List<LocalDate> targetDates = DataUtils.getMonthDates(year, Integer.parseInt(targetMonth));
         //检查是否早于今天
         for (LocalDate target : targetDates) {
             // 获取当前日期
@@ -494,7 +519,7 @@ public class DoctorServiceImpl implements DoctorService {
      */
     public void copyScheduleDay(ScheduleCopy_day scheduleCopyDay) {
         //检查是否已放号
-        Patient_Doctor_Scheduling patientDoctorScheduling = scheduleMapper.selectPatientDoctorSchedulingByIdAndDate(BaseContext.getCurrentId(), java.sql.Date.valueOf(scheduleCopyDay.getTargetDay()));
+        Patient_Doctor_Scheduling patientDoctorScheduling = scheduleMapper.selectPatientDoctorSchedulingByIdAndDateAndRegistrationTypeIsNotNull(BaseContext.getCurrentId(), scheduleCopyDay.getTargetDay());
         if (patientDoctorScheduling != null) {
             throw new UpdateFailedException(MessageConstant.DELETE_FAILED_DOCTOR);
         }
@@ -519,8 +544,15 @@ public class DoctorServiceImpl implements DoctorService {
         ArrayList<String> futureDaysList = DataUtils.futureDaysList(7);
         for (String date : futureDaysList) {
             Doctor_Scheduling doctorScheduling = scheduleMapper.selectByDoctorIdAndDate(BaseContext.getCurrentId(), date);
-            //再更新患者挂号界面
-            scheduleMapper.updatePatientDoctorScheduling2(doctorScheduling);
+            //查出来的表明已放号
+            Patient_Doctor_Scheduling patientDoctorScheduling = scheduleMapper.selectPatientDoctorSchedulingByIdAndDateAndRegistrationTypeIsNotNull(BaseContext.getCurrentId(), date);
+            if (patientDoctorScheduling == null && doctorScheduling.getRegistrationTypeIds() != null) {
+                //先更新排班界面
+                scheduleMapper.updateDeliverRegistration(BaseContext.getCurrentId(), date);
+                //再更新患者挂号界面
+                scheduleMapper.updatePatientDoctorScheduling2(doctorScheduling);
+            }
+
         }
     }
 
@@ -652,6 +684,9 @@ public class DoctorServiceImpl implements DoctorService {
      */
     @Transactional
     public void setPatientCredit(PatientAppointment_PatientInfoDTO patientAppointmentInfoDTO) {
+        if (Objects.equals(patientAppointmentInfoDTO.getStatus(), "noVisited")) {
+            patientMapper.addPatientNo_Show_Number(patientAppointmentInfoDTO.getPatientId());
+        }
         patientMapper.updatePatient(patientAppointmentInfoDTO);
         appointmentMapper.setStatusFinashed(patientAppointmentInfoDTO);
     }
@@ -659,8 +694,27 @@ public class DoctorServiceImpl implements DoctorService {
     /**
      * 查看患者历史预约信息
      */
-    public List<AppointmentRecords> queryPatientAppointment(Long patientId) {
-        return appointmentMapper.selectByPatientId(patientId);
+    public List<AppointmentRecordsVO> queryPatientAppointment(Long patientId) {
+
+        List<AppointmentRecords> records = appointmentMapper.selectByPatientId(patientId);
+        List<AppointmentRecordsVO> appointmentRecordsVOS = new LinkedList<>();
+        for (AppointmentRecords record : records) {
+            List<RegistrationType> registrationTypes = new LinkedList<>();
+            RegistrationType registrationType = registrationMapper.selectById(record.getRegistrationTypeId());
+            registrationTypes.add(registrationType);
+            AppointmentRecordsVO appointmentRecordsVO = new AppointmentRecordsVO();
+            BeanUtils.copyProperties(record, appointmentRecordsVO);
+            appointmentRecordsVO.setRegistrationTypes(registrationTypes);
+            //处于未支付状态的订单获取剩余时间
+            if (record.getRegistrationStatus().equals("unpaid")) {
+                String lastTimeKey = "last_Time_" + record.getOddNumber();
+                // 获取剩余时间（以毫秒为单位）
+                Long Time = redisTemplate.getExpire(lastTimeKey, TimeUnit.SECONDS);
+                appointmentRecordsVO.setLastTime(Time);
+            }
+            appointmentRecordsVOS.add(appointmentRecordsVO);
+        }
+        return appointmentRecordsVOS;
     }
 
     /**

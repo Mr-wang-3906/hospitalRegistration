@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class DoctorRegisterDTO {
     //用户名
-    private String userName;
+    private String username;
 
     //密码
     private String password;

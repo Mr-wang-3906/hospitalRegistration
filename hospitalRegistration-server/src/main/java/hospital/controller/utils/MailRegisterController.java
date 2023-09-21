@@ -1,11 +1,10 @@
 package hospital.controller.utils;
 
 import hospital.constant.MessageConstant;
-import hospital.controller.doctor.DoctorController;
 import hospital.exception.RegisterFailedException;
 import hospital.result.Result;
 import hospital.utils.DataUtils;
-import hospital.utils.VerifyCode;
+import hospital.utils.Code;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
@@ -18,11 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
-import javax.servlet.http.HttpServletRequest;
 import java.util.Date;
-import java.util.Objects;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -52,7 +47,7 @@ public class MailRegisterController {
     @ApiOperation(value = "发送邮箱注册码邮箱")
     public Result sendEmail(@RequestParam String emailAddress) {
         String redisKey = "email_" + emailAddress; // 使用emailAddress作为Redis键
-        String verCode = VerifyCode.setVerifyCode();
+        String verCode = Code.setVerifyCode();
         String time = DataUtils.format(new Date(), DataUtils.FORMAT_FULL_CN);
 
         // 发送邮件的代码部分

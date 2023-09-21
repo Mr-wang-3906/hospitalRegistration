@@ -5,6 +5,7 @@ import hospital.entity.Doctor_Scheduling;
 import hospital.entity.Patient_Doctor_Scheduling;
 import hospital.entity.ScheduleTemplate;
 import hospital.temp.Orders;
+import hospital.vo.Doctor_Scheduling_includingStatus;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -34,7 +35,7 @@ public interface ScheduleMapper {
 
     List<Doctor_Scheduling> selectDoctorSchedulingTempByRegistrationTypeId(@Param("doctorId") Long doctorId, @Param("registrationTypeId") Long id);
 
-    List<Doctor_Scheduling> selectDoctorScheduleByDoctorId(Long doctorId);
+    List<Doctor_Scheduling_includingStatus> selectDoctorScheduleByDoctorId(Long doctorId);
 
     void updateTemplate(@Param("template") ScheduleTemplateDTO template, @Param("registrationTypeIds") String registrationTypeIds);
 
@@ -54,7 +55,7 @@ public interface ScheduleMapper {
 
     void insertNextMonthSchedules(@Param("doctorId") Long doctorId, @Param("nextDate") String nextDate);
 
-    Patient_Doctor_Scheduling selectPatientDoctorSchedulingByIdAndDate(@Param("doctorId") Long doctorId, @Param("date") java.sql.Date date);
+    Patient_Doctor_Scheduling selectPatientDoctorSchedulingByIdAndDateAndRegistrationTypeIsNotNull(@Param("doctorId") Long doctorId, @Param("date") String date);
 
     void updateConfirmPaymentNine(@Param("order") Orders orders, @Param("estimatedTime") String estimatedTime);
 
@@ -77,4 +78,8 @@ public interface ScheduleMapper {
     void updatePatientDoctorScheduling2(@Param("doctorScheduling") Doctor_Scheduling doctorScheduling);
 
     ScheduleTemplate selectNewTempalte(@Param("template") ScheduleTemplateDTO template, @Param("registrationTypeIds") String registrationTypeIds);
+
+    void updateDeliverRegistration(@Param("doctorId") Long doctorId, @Param("date") String date);
+
+    ScheduleTemplate selectByName(String templateName);
 }

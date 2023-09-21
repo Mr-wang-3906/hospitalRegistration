@@ -1,5 +1,6 @@
 package hospital.dto;
 
+import hospital.entity.Doctor;
 import lombok.Data;
 
 import java.sql.Date;
@@ -12,4 +13,7 @@ public class PatientCheckRegistrationDTO {
 
     //时间
     private Date date;
+
+    //医生名称
+    private String doctorName;
 }

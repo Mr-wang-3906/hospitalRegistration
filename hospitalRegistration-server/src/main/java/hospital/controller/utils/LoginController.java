@@ -49,7 +49,10 @@ public class LoginController {
 
 
         Doctor doctor = doctorService.login(loginDTO);
-        Patient patient = patientService.login(loginDTO);
+        Patient patient = null;
+        if (doctor == null) {
+            patient = patientService.login(loginDTO);
+        }
 
         if (doctor == null && patient == null) {
             throw new LoginFailedException(MessageConstant.ACCOUNT_NOT_FOUND);
@@ -75,7 +78,7 @@ public class LoginController {
             //将teacherId存入LocalThread中
             BaseContext.setCurrentId(doctor.getId());
             return Result.success(loginVO);
-        }else {
+        } else {
             //登录成功后，生成jwt令牌
             claims.put(JwtClaimsConstant.EMP_ID, patient.getId());
             String token = JwtUtil.createJWT(

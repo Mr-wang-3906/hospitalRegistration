@@ -1,13 +1,13 @@
 package hospital.service;
 
 import hospital.dto.*;
-import hospital.entity.AppointmentRecords;
 import hospital.entity.Doctor;
 import hospital.entity.RegistrationType;
 import hospital.temp.DoctorInfo;
 import hospital.temp.Doctor_SchedulingTemp;
 import hospital.temp.PatientAppointmentInfo;
-import hospital.vo.Doctor_SchedulingVO;
+import hospital.vo.AppointmentRecordsVO;
+import hospital.vo.Doctor_Scheduling_includingStatusVO;
 import hospital.vo.ScheduleTemplateVO;
 
 import java.util.ArrayList;
@@ -38,7 +38,7 @@ public interface DoctorService {
 
     void updateInfo(DoctorInfo doctorInfo);
 
-    ArrayList<Doctor_SchedulingVO> querySchedule(Long doctorId);
+    ArrayList<Doctor_Scheduling_includingStatusVO> querySchedule(Long doctorId);
 
     void setScheduleWithTemplate(DoctorSetScheduleWithTemplate doctorSetScheduleWithTemplate);
 
@@ -58,7 +58,7 @@ public interface DoctorService {
 
     void setPatientCredit(PatientAppointment_PatientInfoDTO patientAppointmentInfoDTO);
 
-    List<AppointmentRecords> queryPatientAppointment(Long patientId);
+    List<AppointmentRecordsVO> queryPatientAppointment(Long patientId);
 
     void updatePassword(UpdatePasswordDTO updatePasswordDTO);
 }

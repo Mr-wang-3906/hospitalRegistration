@@ -20,4 +20,7 @@ public class Orders {
 
     //选择时间
     private String choiceTime;
+
+    //单号
+    private String oddNumber;
 }

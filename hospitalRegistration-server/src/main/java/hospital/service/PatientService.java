@@ -24,7 +24,7 @@ public interface PatientService {
 
     List<Patient_Doctor_SchedulingVO> choiceDoctor(Long doctor);
 
-    void choiceTime(Orders orders);
+    String choiceTime(Orders orders);
 
     void confirmPayment(Orders orders);
 

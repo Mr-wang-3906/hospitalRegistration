@@ -2,16 +2,16 @@ package hospital.controller.doctor;
 
 import hospital.context.BaseContext;
 import hospital.dto.*;
-import hospital.entity.AppointmentRecords;
 
-import hospital.entity.Doctor;
 import hospital.entity.RegistrationType;
 import hospital.result.Result;
 import hospital.service.DoctorService;
 import hospital.temp.DoctorInfo;
 import hospital.temp.Doctor_SchedulingTemp;
 import hospital.temp.PatientAppointmentInfo;
-import hospital.vo.Doctor_SchedulingVO;
+import hospital.vo.AppointmentRecordsVO;
+import hospital.vo.Doctor_Scheduling_includingStatus;
+import hospital.vo.Doctor_Scheduling_includingStatusVO;
 import hospital.vo.ScheduleTemplateVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -32,7 +32,7 @@ import java.util.Set;
 public class DoctorController {
 
     @Autowired
-    private RedisTemplate redisTemplate;
+    private RedisTemplate<String, Object> redisTemplate;
 
     @Autowired
     private DoctorService doctorService;
@@ -155,10 +155,10 @@ public class DoctorController {
      */
     @GetMapping("/schedule/query")
     @ApiOperation("排班信息查询")
-    public Result<List<Doctor_SchedulingVO>> doctorQuerySchedule() {
+    public Result<List<Doctor_Scheduling_includingStatusVO>> doctorQuerySchedule() {
         String key = "doctor_scheduling_" + BaseContext.getCurrentId();
         List<Object> redisList = redisTemplate.opsForList().range(key, 0, -1);
-        ArrayList<Doctor_SchedulingVO> list = new ArrayList<>();
+        ArrayList<Doctor_Scheduling_includingStatusVO> list = new ArrayList<>();
 
         if (redisList == null || redisList.isEmpty()) {
             // 如果不存在，查询数据库，将查询的数据放入Redis中
@@ -169,8 +169,8 @@ public class DoctorController {
         } else {
             // 如果存在，直接使用Redis中的数据
             for (Object obj : redisList) {
-                if (obj instanceof Doctor_SchedulingVO) {
-                    list.add((Doctor_SchedulingVO) obj);
+                if (obj instanceof Doctor_Scheduling_includingStatusVO) {
+                    list.add((Doctor_Scheduling_includingStatusVO) obj);
                 }
             }
         }
@@ -244,11 +244,12 @@ public class DoctorController {
     }
 
     /**
-     * 放号
+     * 手动放号
      */
     @GetMapping("/registration/deliver")
     @ApiOperation(value = "提前放号")
     public Result doctorDeliverRegistration(){
+        cleanCache();
         doctorService.deliverRegistration();
         return Result.success();
     }
@@ -278,8 +279,8 @@ public class DoctorController {
      */
     @GetMapping("/query/patient/appointment/{patientId}")
     @ApiOperation(value = "查询患者历史预约信息")
-    public Result<List<AppointmentRecords>> queryPatientAppointment(@PathVariable Long patientId){
-        List<AppointmentRecords> appointmentRecordsList = doctorService.queryPatientAppointment(patientId);
+    public Result<List<AppointmentRecordsVO>> queryPatientAppointment(@PathVariable Long patientId){
+        List<AppointmentRecordsVO> appointmentRecordsList = doctorService.queryPatientAppointment(patientId);
         return Result.success(appointmentRecordsList);
     }
 
@@ -295,7 +296,9 @@ public class DoctorController {
 
     private void cleanCache() {
         //清除所有缓存
-        Set keys = redisTemplate.keys("*doctor_scheduling_*");
-        redisTemplate.delete(keys);
+        Set<String> keys = redisTemplate.keys("*doctor_scheduling_*");
+        if (keys != null) {
+            redisTemplate.delete(keys);
+        }
     }
 }

@@ -5,10 +5,7 @@ import hospital.context.BaseContext;
 import hospital.dto.LoginDTO;
 import hospital.dto.PatientCheckRegistrationDTO;
 import hospital.dto.PatientRegisterDTO;
-import hospital.entity.Doctor;
-import hospital.entity.Patient;
-import hospital.entity.Patient_Doctor_Scheduling;
-import hospital.entity.RegistrationType;
+import hospital.entity.*;
 import hospital.exception.NetException;
 import hospital.mapper.*;
 import hospital.temp.Orders;
@@ -16,6 +13,7 @@ import hospital.temp.PatientInfo;
 import hospital.exception.PasswordErrorException;
 import hospital.exception.RegisterFailedException;
 import hospital.service.PatientService;
+import hospital.utils.Code;
 import hospital.vo.Patient_Doctor_SchedulingVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,13 +21,11 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
-import java.sql.Date;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-
 
 
 @Service
@@ -144,10 +140,10 @@ public class PatientServiceImpl implements PatientService {
         if (patientDoctorSchedulings.size() > 0) {
             for (Patient_Doctor_Scheduling patientDoctorScheduling : patientDoctorSchedulings) {
                 Long doctorId = patientDoctorScheduling.getDoctorId();
-                doctors.addAll(doctorMapper.selectByIdAndSection(doctorId, patientCheckRegistrationDTO.getSection()));
+                doctors.addAll(doctorMapper.selectByIdAndSection(doctorId, patientCheckRegistrationDTO.getSection(), patientCheckRegistrationDTO.getDoctorName()));
             }
         } else {
-            doctors.addAll(doctorMapper.selectByIdAndSection(null, patientCheckRegistrationDTO.getSection()));
+            doctors.addAll(doctorMapper.selectByIdAndSection(null, patientCheckRegistrationDTO.getSection(), patientCheckRegistrationDTO.getDoctorName()));
         }
         return doctors;
     }
@@ -158,13 +154,13 @@ public class PatientServiceImpl implements PatientService {
     public List<Patient_Doctor_SchedulingVO> choiceDoctor(Long doctorId) {
         List<Patient_Doctor_Scheduling> patientDoctorSchedulings = scheduleMapper.selectPatientDoctorSchedulingByDoctorId(doctorId);
         List<Patient_Doctor_SchedulingVO> patientDoctorSchedulingVOs = new LinkedList<>();
-        for (Patient_Doctor_Scheduling patientDoctorScheduling: patientDoctorSchedulings) {
+        for (Patient_Doctor_Scheduling patientDoctorScheduling : patientDoctorSchedulings) {
             Patient_Doctor_SchedulingVO patientDoctorSchedulingVO = new Patient_Doctor_SchedulingVO();
             BeanUtils.copyProperties(patientDoctorScheduling, patientDoctorSchedulingVO);
             String registrationTypeId = patientDoctorScheduling.getRegistrationTypeId();
             String[] registrationTypeIds = registrationTypeId.split(",");
             List<RegistrationType> registrationTypes = new LinkedList<>();
-            for (String typeId: registrationTypeIds) {
+            for (String typeId : registrationTypeIds) {
                 RegistrationType registrationType = registrationMapper.selectById(Long.valueOf(typeId));
                 registrationTypes.add(registrationType);
             }
@@ -176,8 +172,10 @@ public class PatientServiceImpl implements PatientService {
 
     /**
      * 提交订单
+     *
+     * @return
      */
-    public void choiceTime(Orders orders) {
+    public String choiceTime(Orders orders) {
         Long patientId = BaseContext.getCurrentId();
         /* 先设置订单状态,只有付款了才会更新挂号界面 */
         Doctor doctor = doctorMapper.selectById(orders.getDoctorId());
@@ -205,17 +203,23 @@ public class PatientServiceImpl implements PatientService {
                     break;
             }
         }
-        appointmentMapper.setStatusOngoing(patientId, orders, doctor.getName(), "unpaid");
+        //生成单号
+        String oddNumber = Code.setOddNumber();
+        //生成该单剩余付款时间
+        appointmentMapper.setStatusOngoing(patientId, orders, doctor.getName(), "unpaid", oddNumber);
+        String lastTimeKey = "last_Time_" + oddNumber;
+        redisTemplate.opsForValue().set(lastTimeKey, oddNumber + "单剩余时间", 15, TimeUnit.MINUTES);
 
         //设置定时任务:
         // 定义任务
         Runnable task = () -> {
             // 将待支付改为已取消
-            appointmentMapper.updateStatus(patientId, orders.getChoiceTime(), "canceled");
+            appointmentMapper.updateStatus(patientId, orders.getChoiceTime(), "canceled", orders.getSection(), oddNumber);
         };
 
         scheduledFuture = executorService.schedule(task, 15, TimeUnit.MINUTES);
 
+        return oddNumber;
     }
 
     //设置定时任务取消函数,用于更新用户付款的更新
@@ -255,10 +259,10 @@ public class PatientServiceImpl implements PatientService {
             }
         }
         //先确认会不会有bug
-        Patient_Doctor_Scheduling patientDoctorSchedulings = scheduleMapper.selectPatientDoctorSchedulingByIdAndDate(orders.getDoctorId(), Date.valueOf(orders.getDate()));
+        Patient_Doctor_Scheduling patientDoctorSchedulings = scheduleMapper.selectPatientDoctorSchedulingByIdAndDateAndRegistrationTypeIsNotNull(orders.getDoctorId(), orders.getDate());
         if (patientDoctorSchedulings.getRegistrationNumberMorning() == 0 || patientDoctorSchedulings.getRegistrationNumberAfternoon() == 0) {
             cancelTask();
-            appointmentMapper.updateStatus(BaseContext.getCurrentId(), orders.getChoiceTime(), "stopped");
+            appointmentMapper.updateStatus(BaseContext.getCurrentId(), orders.getChoiceTime(), "stopped", orders.getSection(), orders.getOddNumber());
             throw new NetException(MessageConstant.NET_ERROR);
         }
         //先取消之前的定时任务
@@ -268,7 +272,7 @@ public class PatientServiceImpl implements PatientService {
         RegistrationType registrationTypes = registrationMapper.selectById(orders.getRegistrationTypeId());
 
         //然后更新历史订单
-        appointmentMapper.updateStatus(BaseContext.getCurrentId(), orders.getChoiceTime(), "waiting");
+        appointmentMapper.updateStatus(BaseContext.getCurrentId(), orders.getChoiceTime(), "waiting", orders.getSection(), orders.getOddNumber());
         int num3 = Integer.parseInt(time.substring(0, 1));
         if (num3 == 9 || num3 == 0) {
             scheduleMapper.updateConfirmPaymentNine(orders, registrationTypes.getEstimatedTime());
@@ -299,6 +303,7 @@ public class PatientServiceImpl implements PatientService {
      */
     public void cancelPayment(Orders orders) {
         cancelTask();
+
         int num1 = Integer.parseInt(orders.getChoiceTime().substring(0, 1));
         if (num1 == 9 || num1 == 0) {
             orders.setChoiceTime(orders.getDate() + " 9:00-10:00");
@@ -322,7 +327,8 @@ public class PatientServiceImpl implements PatientService {
                     break;
             }
         }
-        appointmentMapper.updateStatus(BaseContext.getCurrentId(), orders.getChoiceTime(), "canceled");
+        appointmentMapper.updateStatus(BaseContext.getCurrentId(), orders.getChoiceTime(), "canceled", orders.getSection(), orders.getOddNumber());
 
     }
+
 }

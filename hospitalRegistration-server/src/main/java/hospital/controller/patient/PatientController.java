@@ -12,6 +12,7 @@ import hospital.temp.Orders;
 import hospital.temp.PatientInfo;
 import hospital.result.Result;
 import hospital.service.PatientService;
+import hospital.vo.AppointmentRecordsVO;
 import hospital.vo.Patient_Doctor_SchedulingVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -80,7 +81,7 @@ public class PatientController {
     @PostMapping("/choice/time")
     @ApiOperation(value = "提交订单")
     public Result choiceTime(@RequestBody Orders orders) {
-        patientService.choiceTime(orders);
+        String oddName = patientService.choiceTime(orders);
         return Result.success();
     }
 
@@ -118,8 +119,8 @@ public class PatientController {
      */
     @GetMapping("/query/patient/appointment")
     @ApiOperation(value = "查询患者历史预约信息")
-    public Result<List<AppointmentRecords>> queryPatientAppointment(){
-        List<AppointmentRecords> appointmentRecordsList = doctorService.queryPatientAppointment(BaseContext.getCurrentId());
-        return Result.success(appointmentRecordsList);
+    public Result<List<AppointmentRecordsVO>> queryPatientAppointment(){
+        List<AppointmentRecordsVO> appointmentRecordsVOs = doctorService.queryPatientAppointment(BaseContext.getCurrentId());
+        return Result.success(appointmentRecordsVOs);
     }
 }
