@@ -60,18 +60,18 @@ public class DoctorServiceImpl implements DoctorService {
             code = redisTemplate.opsForValue().get(redisKey);
         } else {
             // Redis中不存在指定的键
-            throw new RegisterFailedException(MessageConstant.REGISTER_TIMEOUT);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.REGISTER_TIMEOUT);
         }
         //验证码判断
         if (!doctorRegisterDTO.getVerify().equals(code)) {
-            throw new RegisterFailedException(MessageConstant.REGISTER_FAILED);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.REGISTER_FAILED);
         }
 
         Doctor doctor = doctorMapper.selectByUsername(doctorRegisterDTO.getUsername());
         //用户名是否可用
         if (doctor != null) {
             //返回，该用户）（username）已被注册过
-            throw new RegisterFailedException(MessageConstant.ACCOUNT_ALREADY_EXISTS);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.ACCOUNT_ALREADY_EXISTS);
         }
         //数据库插入数据
         Doctor doctorTemp = new Doctor();
@@ -82,7 +82,7 @@ public class DoctorServiceImpl implements DoctorService {
         //是否插入数据成功
         if (doctorMapper.selectByUsername(doctorTemp.getUserName()) == null) {
             //返回注册失败
-            throw new RegisterFailedException(MessageConstant.REGISTER_FAILED_BUSY);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.REGISTER_FAILED_BUSY);
         }
         //注册成功
         //获取新注册的医生的id
@@ -123,7 +123,7 @@ public class DoctorServiceImpl implements DoctorService {
         if (doctor != null) {
             if (!password.equals(doctor.getPassword())) {
                 //密码错误
-                throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
+                throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.PASSWORD_ERROR);
             }
         }
 
@@ -138,7 +138,7 @@ public class DoctorServiceImpl implements DoctorService {
     public void addRegistrationType(RegistrationType registrationType) {
         RegistrationType registrationType1 = registrationMapper.selectByName(registrationType.getRegistrationName());
         if (registrationType1 != null) {
-            throw new DateException(MessageConstant.INSERT_ERROR_EXISTS);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.INSERT_ERROR_EXISTS);
         }
         registrationMapper.insertRegistrationType(BaseContext.getCurrentId(), registrationType);
     }
@@ -164,7 +164,7 @@ public class DoctorServiceImpl implements DoctorService {
     public void deleteRegistrationType(List<Long> ids) {
         List<RegistrationType> registrationTypes = registrationMapper.selecetByDoctorId(BaseContext.getCurrentId());
         if (registrationTypes.size() == ids.size()) {
-            throw new DeletionNotAllowedException(MessageConstant.DELETE_FAILED_DOCTOR_REGISTRATION);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.DELETE_FAILED_DOCTOR_REGISTRATION);
         }
         for (Long id : ids) {
             //判断是否有模板正在使用该挂号类别或医生的排班
@@ -172,12 +172,12 @@ public class DoctorServiceImpl implements DoctorService {
             List<Patient_Doctor_Scheduling> patientDoctorScheduling = scheduleMapper.selectPatientScheduleByRegistrationTypeId(id);
             List<Doctor_Scheduling> doctorSchedulingTemps = scheduleMapper.selectDoctorSchedulingTempByRegistrationTypeId(BaseContext.getCurrentId(), id);
             if (doctorSchedulingTemps.size() > 0) {
-                throw new DeletionNotAllowedException(MessageConstant.DELETE_FAILED_DOCTOR_SCHEDULE);
+                throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.DELETE_FAILED_DOCTOR_SCHEDULE);
             }
             if (scheduleTemplates.size() > 0) {
-                throw new DeletionNotAllowedException(MessageConstant.DELETE_FAILED_TEMPLATE);
+                throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.DELETE_FAILED_TEMPLATE);
             } else if (patientDoctorScheduling.size() > 0) {
-                throw new DeletionNotAllowedException(MessageConstant.DELETE_FAILED_DOCTOR);
+                throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.DELETE_FAILED_DOCTOR);
             }
             scheduleMapper.updateByRegistrationTypeId(id);
             registrationMapper.deleteRegistrationType(id);
@@ -194,7 +194,7 @@ public class DoctorServiceImpl implements DoctorService {
         //排查是有已经存在
         ScheduleTemplate scheduleTemplate = scheduleMapper.selectByName(scheduleTemplateDTO.getTemplateName());
         if (scheduleTemplate != null) {
-            throw new DateException(MessageConstant.INSERT_ERROR_EXISTS);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.INSERT_ERROR_EXISTS);
         }
 
         scheduleTemplateDTO.setDoctorId(BaseContext.getCurrentId());
@@ -282,7 +282,7 @@ public class DoctorServiceImpl implements DoctorService {
     @Transactional
     public void updateInfo(DoctorInfo doctorInfo) {
         if (doctorInfo.getName() == null || doctorInfo.getName().equals("")) {
-            throw new DateException(MessageConstant.UPDATE_DOCTOR_ERROR_NULL);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.UPDATE_DOCTOR_ERROR_NULL);
         }
 
         doctorMapper.updateInfo(BaseContext.getCurrentId(), doctorInfo);
@@ -333,11 +333,11 @@ public class DoctorServiceImpl implements DoctorService {
         LocalDate today = LocalDate.now();
         // 比较日期
         if (localDate.isBefore(today)) {
-            throw new DateException(MessageConstant.DATE_SET_ERROR);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.DATE_SET_ERROR);
         }
         Patient_Doctor_Scheduling patientDoctorScheduling = scheduleMapper.selectPatientDoctorSchedulingByIdAndDateAndRegistrationTypeIsNotNull(BaseContext.getCurrentId(), String.valueOf(doctorSetScheduleWithTemplate.getDate()));
         if (patientDoctorScheduling != null) {
-            throw new UpdateFailedException(MessageConstant.DELETE_FAILED_DOCTOR);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.DELETE_FAILED_DOCTOR);
         }
         ScheduleTemplate scheduleTemplate = scheduleMapper.selectById(doctorSetScheduleWithTemplate.getTemplateId());
         //新建一天的排班
@@ -359,7 +359,7 @@ public class DoctorServiceImpl implements DoctorService {
         LocalDate today = LocalDate.now();
         // 比较日期
         if (localDate.isBefore(today)) {
-            throw new DateException(MessageConstant.DATE_SET_ERROR);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.DATE_SET_ERROR);
         }
         doctorSchedulingTemp.setDoctorId(BaseContext.getCurrentId());
         ArrayList<String> futureDaysList = DataUtils.futureDaysList(7);
@@ -367,7 +367,7 @@ public class DoctorServiceImpl implements DoctorService {
             if (Objects.equals(date, doctorSchedulingTemp.getData())) {
                 Patient_Doctor_Scheduling patientDoctorScheduling = scheduleMapper.selectPatientDoctorSchedulingByDoctorIdAndDate(BaseContext.getCurrentId(), doctorSchedulingTemp.getData());
                 if (!(patientDoctorScheduling.getRegistrationTypeId() == null)) {
-                    throw new DateException(MessageConstant.DELETE_FAILED_DOCTOR);
+                    throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.DELETE_FAILED_DOCTOR);
                 }
             }
         }
@@ -390,28 +390,6 @@ public class DoctorServiceImpl implements DoctorService {
         doctorMapper.updateOneDaySchedule(doctorScheduling, data);
     }
 
-//    /**
-//     * 排班复制-周复制 (已废弃)
-//     */
-//    public void copyScheduleWeek_abandon(ScheduleCopy_week scheduleCopyWeek) {
-//        String year = DataUtils.getYear(new Date());
-//        //先取得复制源的排班日期
-//        List<LocalDate> sourceDates = DataUtils.getWeekDates(Integer.parseInt(year), scheduleCopyWeek.getSourceMonth(), scheduleCopyWeek.getSourceWeekNumber());
-//        //根据日期和医生id查找排班信息
-//        List<Doctor_Scheduling> sourceSchedulingList = new LinkedList<>();
-//        for (LocalDate sourceDate: sourceDates) {
-//            Doctor_Scheduling doctorScheduling = scheduleMapper.selectByDoctorIdAndDate(BaseContext.getCurrentId(), String.valueOf(sourceDate));
-//            sourceSchedulingList.add(doctorScheduling);
-//        }
-//
-//        //再根据目标日期进行复制
-//        List<LocalDate> targetDates = DataUtils.getWeekDates(Integer.parseInt(year), scheduleCopyWeek.getTargetMonth(), scheduleCopyWeek.getTargetWeekNumber());
-//        for (int i = 0; i < sourceSchedulingList.size(); i++) {
-//            scheduleMapper.copyOneDay(String.valueOf(targetDates.get(i)),sourceSchedulingList.get(i),BaseContext.getCurrentId());
-//        }
-//
-//
-//
 
     /**
      * 排班复制-周复制
@@ -433,7 +411,7 @@ public class DoctorServiceImpl implements DoctorService {
             LocalDate today = LocalDate.now();
             // 比较日期
             if (targetDate.isBefore(today)) {
-                throw new DateException(MessageConstant.DATE_SET_ERROR);
+                throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.DATE_SET_ERROR);
             }
         }
 
@@ -445,7 +423,7 @@ public class DoctorServiceImpl implements DoctorService {
         //查出来不为空就是已放号
         //若全不为空,则全已放号
         if (patientDoctorSchedulings.stream().allMatch(Objects::nonNull)) {
-            throw new UpdateFailedException(MessageConstant.DELETE_FAILED_DOCTOR_ALL);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.DELETE_FAILED_DOCTOR_ALL);
         }
         //取得复制源排班
         List<Doctor_Scheduling> sourceSchedulingList = new LinkedList<>();
@@ -478,7 +456,7 @@ public class DoctorServiceImpl implements DoctorService {
         }
         //若全不为空,表明已全放号
         if (patientDoctorSchedulings.stream().allMatch(Objects::nonNull)) {
-            throw new UpdateFailedException(MessageConstant.DELETE_FAILED_DOCTOR_ALL);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.DELETE_FAILED_DOCTOR_ALL);
         }
 
         String sourceMonth = (scheduleCopyMonth.getSourMonthNumber().substring(5, 7));
@@ -497,7 +475,7 @@ public class DoctorServiceImpl implements DoctorService {
             LocalDate today = LocalDate.now();
             // 比较日期
             if (target.isBefore(today)) {
-                throw new DateException(MessageConstant.DATE_SET_ERROR);
+                throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.DATE_SET_ERROR);
             }
         }
 
@@ -521,13 +499,13 @@ public class DoctorServiceImpl implements DoctorService {
         //检查是否已放号
         Patient_Doctor_Scheduling patientDoctorScheduling = scheduleMapper.selectPatientDoctorSchedulingByIdAndDateAndRegistrationTypeIsNotNull(BaseContext.getCurrentId(), scheduleCopyDay.getTargetDay());
         if (patientDoctorScheduling != null) {
-            throw new UpdateFailedException(MessageConstant.DELETE_FAILED_DOCTOR);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.DELETE_FAILED_DOCTOR);
         }
         // 获取当前日期
         LocalDate today = LocalDate.now();
         // 比较日期
         if (LocalDate.parse(scheduleCopyDay.getTargetDay()).isBefore(today)) {
-            throw new DateException(MessageConstant.DATE_SET_ERROR);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.DATE_SET_ERROR);
         }
 
         Doctor_Scheduling sourceSchedule = scheduleMapper.selectByDoctorIdAndDate(BaseContext.getCurrentId(), scheduleCopyDay.getSourDay());
@@ -712,6 +690,7 @@ public class DoctorServiceImpl implements DoctorService {
                 Long Time = redisTemplate.getExpire(lastTimeKey, TimeUnit.SECONDS);
                 appointmentRecordsVO.setLastTime(Time);
             }
+            appointmentRecordsVO.setGopay(false);
             appointmentRecordsVOS.add(appointmentRecordsVO);
         }
         return appointmentRecordsVOS;
@@ -725,7 +704,7 @@ public class DoctorServiceImpl implements DoctorService {
         if ((doctor.getPassword().equals(DigestUtils.md5DigestAsHex(updatePasswordDTO.getOld_password().getBytes())))) {
             doctorMapper.updatePassword(BaseContext.getCurrentId(), updatePasswordDTO.getNew_password());
         } else {
-            throw new PasswordEditFailedException(MessageConstant.PASSWORD_EDIT_FAILED);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.PASSWORD_EDIT_FAILED);
         }
     }
 

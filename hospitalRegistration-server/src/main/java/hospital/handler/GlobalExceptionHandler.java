@@ -1,7 +1,7 @@
 package hospital.handler;
 
 import hospital.constant.MessageConstant;
-import hospital.exception.BaseException;
+import hospital.exception.AllException;
 import hospital.exception.UserNotLoginException;
 import hospital.result.Result;
 import lombok.extern.slf4j.Slf4j;
@@ -23,9 +23,9 @@ public class GlobalExceptionHandler {
      * @return
      */
     @ExceptionHandler
-    public Result exceptionHandler(BaseException ex){
+    public Result exceptionHandler(AllException ex){
         log.error("异常信息：{}", ex.getMessage());
-        return Result.error(ex.getMessage());
+        return Result.error(ex.getCode(),ex.getMessage());
     }
 
     /**
@@ -36,7 +36,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler
     public Result exceptionHandler(UserNotLoginException ex){
         log.error("异常信息：{}", ex.getMessage());
-        return Result.userNotLogin(ex.getMessage());
+        return Result.userNotLogin(MessageConstant.Code_Unauthorized,ex.getMessage());
     }
 
     /**
@@ -52,9 +52,9 @@ public class GlobalExceptionHandler {
             String[] split = message.split(" ");
             String username = split[2];
             String msg = username + MessageConstant.ALREADY_EXISTS;
-            return Result.error(msg);
+            return Result.error(MessageConstant.Code_Internal_Server_Error,msg);
         }else {
-            return Result.error(MessageConstant.UNKNOWN_ERROR);
+            return Result.error(MessageConstant.Code_Internal_Server_Error,MessageConstant.UNKNOWN_ERROR);
         }
     }
 

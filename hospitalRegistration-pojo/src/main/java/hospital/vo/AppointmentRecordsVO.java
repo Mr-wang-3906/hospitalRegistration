@@ -25,4 +25,6 @@ public class AppointmentRecordsVO {
     private String registrationStatus;
 
     private Long lastTime;
+
+    private boolean gopay;
 }

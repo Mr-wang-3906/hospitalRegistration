@@ -4,7 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import hospital.constant.MessageConstant;
 import hospital.entity.Image;
-import hospital.exception.DateException;
+import hospital.exception.AllException;
 import hospital.mapper.ImageMapper;
 import hospital.result.Result;
 import io.swagger.annotations.Api;
@@ -45,7 +45,7 @@ public class PngLoad {
         picName = jsonObject.getString("picName");
 
         if (base64Pic == null || base64Pic.isEmpty()) {
-            throw new DateException(MessageConstant.PIC_IS_EMPTY);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.PIC_IS_EMPTY);
         }
 
         try {
@@ -78,7 +78,7 @@ public class PngLoad {
 
             return Result.success();
         } catch (Exception e) {
-            return Result.error(MessageConstant.UNKNOWN_ERROR);
+            return Result.error(MessageConstant.Code_Internal_Server_Error,MessageConstant.UNKNOWN_ERROR);
         }
 
     }

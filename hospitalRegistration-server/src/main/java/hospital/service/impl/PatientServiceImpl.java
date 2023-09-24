@@ -6,12 +6,10 @@ import hospital.dto.LoginDTO;
 import hospital.dto.PatientCheckRegistrationDTO;
 import hospital.dto.PatientRegisterDTO;
 import hospital.entity.*;
-import hospital.exception.NetException;
+import hospital.exception.AllException;
 import hospital.mapper.*;
 import hospital.temp.Orders;
 import hospital.temp.PatientInfo;
-import hospital.exception.PasswordErrorException;
-import hospital.exception.RegisterFailedException;
 import hospital.service.PatientService;
 import hospital.utils.Code;
 import hospital.vo.Patient_Doctor_SchedulingVO;
@@ -73,7 +71,7 @@ public class PatientServiceImpl implements PatientService {
         if (patient != null) {
             if (!password.equals(patient.getPassword())) {
                 //密码错误
-                throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
+                throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.PASSWORD_ERROR);
             }
         }
 
@@ -95,18 +93,18 @@ public class PatientServiceImpl implements PatientService {
             code = redisTemplate.opsForValue().get(redisKey);
         } else {
             // Redis中不存在指定的键
-            throw new RegisterFailedException(MessageConstant.REGISTER_TIMEOUT);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.REGISTER_TIMEOUT);
         }
         //验证码判断
         if (!patientRegisterDTO.getVerify().equals(code)) {
-            throw new RegisterFailedException(MessageConstant.REGISTER_FAILED);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.REGISTER_FAILED);
         }
 
         Patient patient = patientMapper.selectByUsername(patientRegisterDTO.getUserName());
         //用户名是否可用
         if (patient != null) {
             //返回，该用户）（username）已被注册过
-            throw new RegisterFailedException(MessageConstant.ACCOUNT_ALREADY_EXISTS);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.ACCOUNT_ALREADY_EXISTS);
         }
         //数据库插入数据
         Patient patientTemp = new Patient();
@@ -116,7 +114,7 @@ public class PatientServiceImpl implements PatientService {
         //是否插入数据成功
         if (patientMapper.selectByUsername(patientTemp.getUserName()) == null) {
             //返回注册失败
-            throw new RegisterFailedException(MessageConstant.REGISTER_FAILED_BUSY);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.REGISTER_FAILED_BUSY);
         }
         //注册成功
     }
@@ -180,29 +178,7 @@ public class PatientServiceImpl implements PatientService {
         /* 先设置订单状态,只有付款了才会更新挂号界面 */
         Doctor doctor = doctorMapper.selectById(orders.getDoctorId());
         //先设置历史订单-待支付
-        int num1 = Integer.parseInt(orders.getChoiceTime().substring(0, 1));
-        if (num1 == 9 || num1 == 0) {
-            orders.setChoiceTime(orders.getDate() + " 9:00-10:00");
-        } else {
-            int num2 = Integer.parseInt(orders.getChoiceTime().substring(0, 2));
-            switch (num2) {
-                case 10:
-                    orders.setChoiceTime(orders.getDate() + " 10:00-11:00");
-                    break;
-                case 11:
-                    orders.setChoiceTime(orders.getDate() + " 11:00-12:00");
-                    break;
-                case 14:
-                    orders.setChoiceTime(orders.getDate() + " 14:00-15:00");
-                    break;
-                case 15:
-                    orders.setChoiceTime(orders.getDate() + " 15:00-16:00");
-                    break;
-                case 16:
-                    orders.setChoiceTime(orders.getDate() + " 16:00-17:00");
-                    break;
-            }
-        }
+        setTime(orders);
         //生成单号
         String oddNumber = Code.setOddNumber();
         //生成该单剩余付款时间
@@ -222,19 +198,7 @@ public class PatientServiceImpl implements PatientService {
         return oddNumber;
     }
 
-    //设置定时任务取消函数,用于更新用户付款的更新
-    public static void cancelTask() {
-        if (scheduledFuture != null) {
-            scheduledFuture.cancel(true);
-        }
-    }
-
-
-    /**
-     * 确认付款
-     */
-    public void confirmPayment(Orders orders) {
-        String time = orders.getChoiceTime();
+    private static void setTime(Orders orders) {
         int num1 = Integer.parseInt(orders.getChoiceTime().substring(0, 1));
         if (num1 == 9 || num1 == 0) {
             orders.setChoiceTime(orders.getDate() + " 9:00-10:00");
@@ -258,12 +222,28 @@ public class PatientServiceImpl implements PatientService {
                     break;
             }
         }
+    }
+
+    //设置定时任务取消函数,用于更新用户付款的更新
+    public static void cancelTask() {
+        if (scheduledFuture != null) {
+            scheduledFuture.cancel(true);
+        }
+    }
+
+
+    /**
+     * 确认付款
+     */
+    public void confirmPayment(Orders orders) {
+        String time = orders.getChoiceTime();
+        setTime(orders);
         //先确认会不会有bug
         Patient_Doctor_Scheduling patientDoctorSchedulings = scheduleMapper.selectPatientDoctorSchedulingByIdAndDateAndRegistrationTypeIsNotNull(orders.getDoctorId(), orders.getDate());
         if (patientDoctorSchedulings.getRegistrationNumberMorning() == 0 || patientDoctorSchedulings.getRegistrationNumberAfternoon() == 0) {
             cancelTask();
             appointmentMapper.updateStatus(BaseContext.getCurrentId(), orders.getChoiceTime(), "stopped", orders.getSection(), orders.getOddNumber());
-            throw new NetException(MessageConstant.NET_ERROR);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.NET_ERROR);
         }
         //先取消之前的定时任务
         cancelTask();
@@ -303,30 +283,7 @@ public class PatientServiceImpl implements PatientService {
      */
     public void cancelPayment(Orders orders) {
         cancelTask();
-
-        int num1 = Integer.parseInt(orders.getChoiceTime().substring(0, 1));
-        if (num1 == 9 || num1 == 0) {
-            orders.setChoiceTime(orders.getDate() + " 9:00-10:00");
-        } else {
-            int num2 = Integer.parseInt(orders.getChoiceTime().substring(0, 2));
-            switch (num2) {
-                case 10:
-                    orders.setChoiceTime(orders.getDate() + " 10:00-11:00");
-                    break;
-                case 11:
-                    orders.setChoiceTime(orders.getDate() + " 11:00-12:00");
-                    break;
-                case 14:
-                    orders.setChoiceTime(orders.getDate() + " 14:00-15:00");
-                    break;
-                case 15:
-                    orders.setChoiceTime(orders.getDate() + " 15:00-16:00");
-                    break;
-                case 16:
-                    orders.setChoiceTime(orders.getDate() + " 16:00-17:00");
-                    break;
-            }
-        }
+        setTime(orders);
         appointmentMapper.updateStatus(BaseContext.getCurrentId(), orders.getChoiceTime(), "canceled", orders.getSection(), orders.getOddNumber());
 
     }

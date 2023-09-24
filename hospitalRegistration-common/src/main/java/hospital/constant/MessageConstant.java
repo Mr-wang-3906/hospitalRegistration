@@ -5,6 +5,12 @@ package hospital.constant;
  */
 public class MessageConstant {
 
+    public static final int Code_OK = 200;
+    public static final int Code_No_Content = 204;
+    public static final int Code_Unauthorized = 401;
+    public static final int Code_Internal_Server_Error = 500;
+
+
     public static final String VERIFY_ERROR = "邮箱格式不正确或邮箱未注册";
     public static final String PASSWORD_ERROR = "密码错误";
     public static final String ACCOUNT_NOT_FOUND = "账号不存在";
@@ -27,6 +33,7 @@ public class MessageConstant {
     public static final String DELETE_FAILED_DOCTOR_REGISTRATION = "医生至少套有一种挂号种类";
     public static final String INSERT_ERROR_EXISTS = "该名称已被占用";
     public static final String UPDATE_DOCTOR_ERROR_NULL = "名称不能为空";
+    public static final String SEND_FAILED_BUSY = "当前操作繁忙,请稍后再试";
 
 
 }

@@ -1,6 +1,6 @@
 package hospital.utils;
 
-import hospital.exception.FormatErrorException;
+import hospital.exception.AllException;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -338,35 +338,6 @@ public final class DataUtils {
         Date today = calendar.getTime();
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
         return format.format(today);
-    }
-
-    /**
-     * 根据年 月 周数 得到这一周的日期
-     */
-    public static List<LocalDate> getWeekDates(int year, int month, int week) throws FormatErrorException {
-        int weekCount = getWeekCount(year, month);
-        if (week > weekCount) {
-            throw new FormatErrorException(month + "月只有" + weekCount + "周,请输入正确的周数");
-        }
-        List<LocalDate> weekDates = new ArrayList<>();
-
-        LocalDate firstDayOfMonth = LocalDate.of(year, month, 1);
-
-        // 找到指定月份的第一个星期一
-        LocalDate firstMonday = firstDayOfMonth.with(TemporalAdjusters.firstInMonth(DayOfWeek.MONDAY));
-
-        // 计算指定周数的第一天和最后一天
-        LocalDate firstDayOfWeek = firstMonday.plusWeeks(week - 1);
-        LocalDate lastDayOfWeek = firstDayOfWeek.plusDays(6);
-
-        // 将每一天添加到列表中
-        LocalDate currentDate = firstDayOfWeek;
-        while (!currentDate.isAfter(lastDayOfWeek)) {
-            weekDates.add(currentDate);
-            currentDate = currentDate.plusDays(1);
-        }
-
-        return weekDates;
     }
 
     /**

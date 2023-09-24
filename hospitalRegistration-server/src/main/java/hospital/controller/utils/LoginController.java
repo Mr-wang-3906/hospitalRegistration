@@ -6,7 +6,7 @@ import hospital.context.BaseContext;
 import hospital.dto.LoginDTO;
 import hospital.entity.Doctor;
 import hospital.entity.Patient;
-import hospital.exception.LoginFailedException;
+import hospital.exception.AllException;
 import hospital.properties.JwtProperties;
 import hospital.result.Result;
 import hospital.service.DoctorService;
@@ -55,7 +55,7 @@ public class LoginController {
         }
 
         if (doctor == null && patient == null) {
-            throw new LoginFailedException(MessageConstant.ACCOUNT_NOT_FOUND);
+            throw new AllException(MessageConstant.Code_Internal_Server_Error,MessageConstant.ACCOUNT_NOT_FOUND);
         }
 
         Map<String, Object> claims = new HashMap<>();
